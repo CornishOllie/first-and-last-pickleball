@@ -1,0 +1,74 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('news')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+---
+
+<Base title="News" description="Latest news, match reports and updates from First & Last Pickleball Club.">
+  <section>
+    <div class="container">
+      <p class="eyebrow">From the courts</p>
+      <h1>Club news</h1>
+
+      {posts.length === 0 ? (
+        <p>Nothing here yet — check back soon.</p>
+      ) : (
+        <ul class="post-list">
+          {posts.map((post) => (
+            <li>
+              <a href={`/news/${post.id}`}>
+                <time datetime={post.data.date.toISOString()}>
+                  {post.data.date.toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </time>
+                <h2>{post.data.title}</h2>
+                <p>{post.data.summary}</p>
+                <span class="read-more">Read →</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .post-list {
+    list-style: none;
+    padding: 0;
+    margin: 2rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .post-list a {
+    display: block;
+    padding: 1.5rem;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    text-decoration: none;
+    color: inherit;
+    background: var(--paper);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .post-list a:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(8, 50, 58, 0.08);
+  }
+  .post-list time {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--coral);
+    font-weight: 600;
+  }
+  .post-list h2 { margin: 0.4rem 0 0.5rem; font-size: 1.4rem; }
+  .read-more { color: var(--sea); font-weight: 600; font-size: 0.9rem; }
+</style>

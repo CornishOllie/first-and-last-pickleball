@@ -1,0 +1,274 @@
+---
+import Base from '../layouts/Base.astro';
+
+const sessions = [
+  {
+    day: 'Sunday',
+    time: '8:00 – 9:00',
+    name: 'Competition Prep',
+    who: 'Fixed partners',
+    ball: 'Franklin X-40',
+    price: '£4',
+    description:
+      "Faster, focused play with the Franklin X-40 outdoor ball — sharper bounce, more pace. Partners are fixed for the session.",
+  },
+  {
+    day: 'Sunday',
+    time: '9:00 – 10:30',
+    name: '1st Sunday Session',
+    who: 'Ages 10+ · beginners welcome',
+    ball: 'Gamma Photon',
+    price: '£5',
+    description:
+      "Easy hitting, beginners encouraged. The friendliest session in the week — bring trainers and a drink, we've got paddles to borrow.",
+  },
+  {
+    day: 'Sunday',
+    time: '10:30 – 12:00',
+    name: '2nd Sunday Session',
+    who: 'Ages 10+ · beginners welcome',
+    ball: 'Gamma Photon',
+    price: '£5',
+    description:
+      'Same format as the 9:00 session — drop into whichever slot suits.',
+  },
+  {
+    day: 'Tuesday',
+    time: '4:30 – 6:30',
+    name: 'Improvers',
+    who: '14+ · know the rules, score, hold a rally',
+    ball: 'Gamma Photon',
+    price: '£6',
+    description:
+      'For players who have the basics down. Also the slot for Intermediate Plus assessments — see Wednesdays below.',
+  },
+  {
+    day: 'Wednesday',
+    time: 'Time TBC',
+    name: 'Intermediate Plus',
+    who: 'Invite only · assessments on Tuesdays 4:30 – 5:00',
+    ball: 'Franklin X-40',
+    price: 'See Spond',
+    description:
+      'For players able to play all aspects of the game — dinking, short play and power. Want to be considered? Drop in to the start of Tuesday for an assessment.',
+    flag: true,
+  },
+  {
+    day: 'Thursday',
+    time: '5:30 – 7:00',
+    name: 'Improvers',
+    who: '14+ · know the rules, score, hold a rally',
+    ball: 'Gamma Photon',
+    price: '£5',
+    description: 'Same improvers format as Tuesday and Friday.',
+  },
+  {
+    day: 'Friday',
+    time: '4:30 – 6:30',
+    name: 'Improvers',
+    who: '14+ · know the rules, score, hold a rally',
+    ball: 'Gamma Photon',
+    price: '£6',
+    description: 'Round off the week — same improvers format.',
+  },
+];
+---
+
+<Base title="Sessions" description="When and where First & Last Pickleball Club plays in St Just, Cornwall — full weekly schedule.">
+  <section class="hero-band">
+    <img src="/img/hall-wide.jpg" alt="The sports hall at GO! St Just set up for pickleball." class="hero-band-bg" />
+    <div class="hero-band-overlay"></div>
+    <div class="container hero-band-inner">
+      <p class="eyebrow on-dark">When to play</p>
+      <h1>Seven sessions a week</h1>
+      <p class="lede on-dark">
+        From Sunday beginners to invite-only Intermediate Plus, we play through the whole week.
+        Everything's bookable through Spond — see <a href="/join">Join us</a>.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="sessions-list">
+        {sessions.map((s) => (
+          <article class={`session ${s.flag ? 'flagged' : ''}`}>
+            <div class="day">
+              <span class="day-name">{s.day}</span>
+              <span class="day-time">{s.time}</span>
+              <span class="day-price">{s.price}</span>
+            </div>
+            <div class="detail">
+              <h2>{s.name}</h2>
+              <p>{s.description}</p>
+              <ul class="meta plain">
+                <li><strong>Who:</strong> {s.who}</li>
+                <li><strong>Ball:</strong> {s.ball}</li>
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div class="cta-block">
+        <h3>Ready to book?</h3>
+        <p>All sessions are managed through the Spond app — join the group and book whichever sessions suit.</p>
+        <a href="/join" class="btn">Join on Spond</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="sand tight">
+    <div class="container">
+      <p class="eyebrow">Where we play</p>
+      <h2>GO! St Just Sports &amp; Fitness Centre</h2>
+      <div class="venue-grid">
+        <div>
+          <p>
+            Cape Cornwall Road<br />
+            St Just<br />
+            Penzance<br />
+            TR19 7JX
+          </p>
+          <p>
+            <a href="https://www.go-stjust.org/" target="_blank" rel="noopener">go-stjust.org ↗</a><br />
+            <a href="tel:01736787856">01736 787856</a>
+          </p>
+          <p>
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=GO!+St+Just+Sports+%26+Fitness+Centre+TR19+7JX"
+              target="_blank"
+              rel="noopener"
+              class="btn secondary"
+            >Open in Google Maps</a>
+          </p>
+        </div>
+        <div class="map-frame">
+          <iframe
+            title="Map showing GO! St Just Sports & Fitness Centre"
+            src="https://www.google.com/maps?q=GO!+St+Just+Sports+%26+Fitness+Centre+TR19+7JX&output=embed"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            allowfullscreen
+          ></iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero-band {
+    position: relative;
+    color: var(--paper);
+    padding: 5rem 0 4rem;
+    overflow: hidden;
+    background: var(--sea-dark);
+  }
+  .hero-band-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+  }
+  .hero-band-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(8, 50, 58, 0.55), rgba(8, 50, 58, 0.85));
+    z-index: 1;
+  }
+  .hero-band-inner { position: relative; z-index: 2; }
+  .hero-band h1 { color: var(--paper); }
+  .on-dark { color: var(--sand); }
+  .on-dark a { color: var(--sand-dark); }
+
+  .sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .session {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 2rem;
+    padding: 1.75rem;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--paper);
+  }
+  .session.flagged {
+    border-color: var(--coral);
+    background: linear-gradient(180deg, var(--paper) 0%, #fff5ee 100%);
+  }
+  @media (max-width: 700px) {
+    .session { grid-template-columns: 1fr; gap: 1rem; }
+  }
+  .day {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    border-right: 1px solid var(--line);
+    padding-right: 1.5rem;
+  }
+  @media (max-width: 700px) {
+    .day { border-right: none; border-bottom: 1px solid var(--line); padding: 0 0 1rem; }
+  }
+  .day-name {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--sea-dark);
+  }
+  .day-time { color: var(--sea-light); font-weight: 500; }
+  .day-price {
+    margin-top: 0.4rem;
+    display: inline-block;
+    width: fit-content;
+    background: var(--sand);
+    color: var(--sea-dark);
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+  .detail h2 { font-size: 1.3rem; margin-bottom: 0.5rem; }
+  .meta {
+    font-size: 0.9rem;
+    color: var(--slate);
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--line);
+  }
+  .meta li { padding: 0.2rem 0; }
+  .cta-block {
+    margin: 3rem 0 0;
+    padding: 2rem;
+    background: var(--sand);
+    border-radius: 14px;
+    text-align: center;
+  }
+  .cta-block h3 { margin-bottom: 0.5rem; }
+  .venue-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 2rem;
+    margin-top: 1.5rem;
+  }
+  @media (max-width: 760px) {
+    .venue-grid { grid-template-columns: 1fr; }
+  }
+  .map-frame {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    aspect-ratio: 4 / 3;
+  }
+  .map-frame iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+  }
+</style>

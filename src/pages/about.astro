@@ -1,0 +1,85 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="About" description="About First & Last Pickleball Club in St Just, Cornwall.">
+  <section>
+    <div class="container narrow">
+      <p class="eyebrow">The club</p>
+      <h1>About First &amp; Last</h1>
+      <p class="lede">
+        We're a friendly pickleball club based in St Just — the most westerly town in mainland
+        Britain. We play year-round at GO! St Just, with seven sessions a week catering for everyone
+        from total beginners to invite-only Intermediate Plus.
+      </p>
+
+      <figure class="feature">
+        <img
+          src="/img/court-action.jpg"
+          alt="Members playing on the wood courts at GO! St Just."
+          loading="lazy"
+        />
+      </figure>
+
+      <h2>What we're about</h2>
+      <p>
+        Pickleball is the fastest-growing racquet sport in the world for good reason — it's quick to
+        learn, easy on the joints, and absurdly fun. We play indoors at GO! St Just year-round on
+        proper wood courts, with sessions for complete beginners through to invite-only Intermediate
+        Plus.
+      </p>
+
+      <h2>Beyond the weekly sessions</h2>
+      <p>
+        We run internal tournaments and friendlies through the year — a good excuse for medals,
+        cake, and a bit of healthy rivalry.
+      </p>
+
+      <figure class="feature">
+        <img
+          src="/img/medals.jpg"
+          alt="Six members of the club wearing medals after a club tournament."
+          loading="lazy"
+        />
+      </figure>
+
+      <h2>Committee</h2>
+      <p class="placeholder">
+        <em>(Add committee names &amp; roles here — chair, treasurer, sessions lead, etc.)</em>
+      </p>
+
+      <h2>History</h2>
+      <p class="placeholder">
+        <em>(When the club started, founding members, milestones — fill in as you like.)</em>
+      </p>
+
+      <h2>Get in touch</h2>
+      <p>
+        Email <a href="mailto:hello@firstandlastpickleball.co.uk">hello@firstandlastpickleball.co.uk</a>
+        or drop in to any of our <a href="/sessions">sessions</a>.
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 48rem; }
+  .feature {
+    margin: 2rem 0;
+  }
+  .feature img {
+    width: 100%;
+    max-height: 480px;
+    object-fit: cover;
+    object-position: center 15%;
+    border-radius: 14px;
+    display: block;
+  }
+  .placeholder {
+    background: var(--sand);
+    border-left: 3px solid var(--coral);
+    padding: 0.85rem 1rem;
+    border-radius: 0 6px 6px 0;
+    color: var(--slate);
+  }
+</style>

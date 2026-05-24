@@ -1,0 +1,63 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('news');
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+---
+
+<Base title={post.data.title} description={post.data.summary}>
+  <section>
+    <div class="container narrow">
+      <p class="eyebrow">
+        <time datetime={post.data.date.toISOString()}>
+          {post.data.date.toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })}
+        </time>
+        {post.data.author && <> · {post.data.author}</>}
+      </p>
+      <h1>{post.data.title}</h1>
+      <p class="lede">{post.data.summary}</p>
+      <article class="prose">
+        <Content />
+      </article>
+      <p style="margin-top: 3rem;"><a href="/news">← All news</a></p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 44rem; }
+  .prose {
+    margin-top: 2rem;
+    font-size: 1.05rem;
+  }
+  .prose :global(h2) {
+    margin-top: 2rem;
+    font-size: 1.5rem;
+  }
+  .prose :global(h3) { margin-top: 1.5rem; }
+  .prose :global(blockquote) {
+    border-left: 3px solid var(--coral);
+    padding-left: 1rem;
+    color: var(--sea-dark);
+    font-style: italic;
+    margin: 1.5rem 0;
+  }
+  .prose :global(img) {
+    max-width: 100%;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+</style>

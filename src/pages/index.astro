@@ -1,0 +1,274 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('news'))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 3);
+
+const weekAtAGlance = [
+  { day: 'Sun', time: '08:00', label: 'Competition Prep · fixed partners' },
+  { day: 'Sun', time: '09:00', label: '1st Sunday Session · beginners welcome' },
+  { day: 'Sun', time: '10:30', label: '2nd Sunday Session · beginners welcome' },
+  { day: 'Tue', time: '16:30', label: 'Improvers · 14+' },
+  { day: 'Wed', time: 'TBC', label: 'Intermediate Plus · invite only' },
+  { day: 'Thu', time: '17:30', label: 'Improvers · 14+' },
+  { day: 'Fri', time: '16:30', label: 'Improvers · 14+' },
+];
+---
+
+<Base title="Home">
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">West Penwith</p>
+        <h1>Indoor pickleball in Britain's<br />most westerly town.</h1>
+        <p class="lede">
+          First &amp; Last Pickleball Club plays year-round at GO! St Just — seven sessions a week
+          from total beginners through to invite-only Intermediate Plus. All bookable through Spond.
+        </p>
+        <p class="cta-row">
+          <a href="/join" class="btn">Join the club</a>
+          <a href="/sessions" class="btn secondary">See session times</a>
+        </p>
+      </div>
+      <div class="hero-photo">
+        <img
+          src="/img/action.jpg"
+          alt="A First & Last member mid-swing on court at GO! St Just."
+          width="1024"
+          height="768"
+          loading="eager"
+          fetchpriority="high"
+        />
+      </div>
+    </div>
+  </section>
+
+  <section class="sand">
+    <div class="container">
+      <p class="eyebrow">What to expect</p>
+      <h2>A friendly, year-round club</h2>
+      <div class="grid-3" style="margin-top: 2rem;">
+        <div class="card">
+          <h3>New to pickleball?</h3>
+          <p>
+            Sunday mornings are the place to start — easy hitting with the Gamma Photon ball,
+            beginners encouraged, ages 10+. We'll lend you a paddle.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Already playing?</h3>
+          <p>
+            Improvers sessions run Tuesday, Thursday and Friday for anyone 14+ who knows the rules
+            and can hold a rally. Drop in to whichever fits your week.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Want a faster game?</h3>
+          <p>
+            Sunday's 8am Competition Prep uses the Franklin X-40 outdoor ball with fixed partners.
+            Intermediate Plus on Wednesdays is invite only — get assessed at the start of Tuesday.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container schedule-section">
+      <div>
+        <p class="eyebrow">Your week</p>
+        <h2>Seven sessions, all bookable on Spond.</h2>
+        <p class="lede">
+          From the gentle Sunday warm-up to the invite-only Wednesday game, there's something
+          almost every day of the week.
+        </p>
+        <p style="margin-top: 1.5rem;">
+          <a href="/sessions" class="btn">Full schedule &amp; prices</a>
+        </p>
+      </div>
+      <ul class="plain week-list">
+        {weekAtAGlance.map((row) => (
+          <li>
+            <span class="wl-day">{row.day}</span>
+            <span class="wl-time">{row.time}</span>
+            <span class="wl-label">{row.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="community-band">
+    <img src="/img/group.jpg" alt="Members of First & Last Pickleball Club gathered on court." class="community-bg" />
+    <div class="community-overlay"></div>
+    <div class="container community-inner">
+      <p class="eyebrow on-dark">More than a sport</p>
+      <h2>You'll find your people on the court.</h2>
+      <p class="lede on-dark">
+        We're a properly mixed bag — juniors to retirees, locals to holidaymakers, complete
+        beginners to seasoned competitors. Competitive on court, friendly off it. New faces always welcome.
+      </p>
+    </div>
+  </section>
+
+  {posts.length > 0 && (
+    <section>
+      <div class="container">
+        <p class="eyebrow">Latest news</p>
+        <h2>From the club</h2>
+        <div class="grid-3" style="margin-top: 2rem;">
+          {posts.map((post) => (
+            <a href={`/news/${post.id}`} class="card news-card">
+              <time datetime={post.data.date.toISOString()}>
+                {post.data.date.toLocaleDateString('en-GB', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </time>
+              <h3>{post.data.title}</h3>
+              <p>{post.data.summary}</p>
+              <span class="read-more">Read →</span>
+            </a>
+          ))}
+        </div>
+        <p style="margin-top: 2rem;"><a href="/news">All news →</a></p>
+      </div>
+    </section>
+  )}
+
+  <section class="sea-dark">
+    <div class="container">
+      <p class="eyebrow">Come and play</p>
+      <h2>A session almost every day.<br />Whoever you are, come and play.</h2>
+      <p class="lede" style="color: var(--sand);">
+        Local, holidaymaker, or just curious — sessions are open and we'd love to see you on court.
+      </p>
+      <p style="margin-top: 1.5rem;">
+        <a href="/join" class="btn" style="background: var(--coral);">Join us on Spond</a>
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero {
+    padding: 4rem 0 4rem;
+    background: linear-gradient(180deg, var(--paper) 0%, var(--sand) 100%);
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: 3rem;
+    align-items: center;
+  }
+  @media (max-width: 880px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 2rem; }
+  }
+  .cta-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+  }
+  .hero-photo {
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(8, 50, 58, 0.15);
+    aspect-ratio: 4 / 3;
+    background: var(--sea-dark);
+  }
+  .hero-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 22%;
+    display: block;
+  }
+
+  .schedule-section {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 3rem;
+    align-items: center;
+  }
+  @media (max-width: 760px) {
+    .schedule-section { grid-template-columns: 1fr; gap: 1.5rem; }
+  }
+  .week-list {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--paper);
+  }
+  .week-list li {
+    display: grid;
+    grid-template-columns: 60px 80px 1fr;
+    gap: 1rem;
+    align-items: baseline;
+    padding: 0.95rem 1.25rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .week-list li:last-child { border-bottom: none; }
+  .wl-day {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--sea-dark);
+    font-size: 1.05rem;
+  }
+  .wl-time {
+    color: var(--coral);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.95rem;
+  }
+  .wl-label { color: var(--slate); font-size: 0.95rem; }
+
+  .community-band {
+    position: relative;
+    padding: 6rem 0;
+    overflow: hidden;
+    color: var(--paper);
+  }
+  .community-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+  }
+  .community-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(8, 50, 58, 0.88) 0%, rgba(8, 50, 58, 0.55) 70%, rgba(8, 50, 58, 0.4) 100%);
+    z-index: 1;
+  }
+  .community-inner { position: relative; z-index: 2; max-width: 40rem; }
+  .community-band h2 { color: var(--paper); }
+  .on-dark { color: var(--sand); }
+  .on-dark a { color: var(--sand-dark); }
+
+  .news-card {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .news-card time {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--coral);
+    font-weight: 600;
+  }
+  .news-card h3 { margin: 0.5rem 0; }
+  .read-more {
+    display: inline-block;
+    margin-top: 0.5rem;
+    color: var(--sea);
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+</style>

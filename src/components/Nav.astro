@@ -1,0 +1,106 @@
+---
+const { pathname } = Astro.url;
+const links = [
+  { href: '/', label: 'Home' },
+  { href: '/sessions', label: 'Sessions' },
+  { href: '/join', label: 'Join us' },
+  { href: '/news', label: 'News' },
+  { href: '/about', label: 'About' },
+];
+const isActive = (href: string) =>
+  href === '/' ? pathname === '/' : pathname.startsWith(href);
+---
+
+<header class="site-header">
+  <div class="container nav-wrap">
+    <a href="/" class="brand">
+      <span class="brand-mark" aria-hidden="true">F&amp;L</span>
+      <span class="brand-text">
+        <strong>First &amp; Last</strong>
+        <small>Pickleball Club · St Just</small>
+      </span>
+    </a>
+    <nav aria-label="Primary">
+      <ul>
+        {links.map((l) => (
+          <li>
+            <a href={l.href} class={isActive(l.href) ? 'active' : ''}>{l.label}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    border-bottom: 1px solid var(--line);
+    background: var(--paper);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: saturate(180%) blur(8px);
+    background: rgba(251, 250, 246, 0.85);
+  }
+  .nav-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1.25rem;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: var(--sea-dark);
+  }
+  .brand-mark {
+    background: var(--sea-dark);
+    color: var(--sand);
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 1rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 8px;
+    letter-spacing: 0.02em;
+  }
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+  }
+  .brand-text strong {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .brand-text small {
+    font-size: 0.72rem;
+    color: var(--sea-light);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  nav ul {
+    display: flex;
+    gap: 1.25rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex-wrap: wrap;
+  }
+  nav a {
+    text-decoration: none;
+    color: var(--slate);
+    font-weight: 500;
+    padding: 0.25rem 0;
+    border-bottom: 2px solid transparent;
+  }
+  nav a:hover { color: var(--sea); }
+  nav a.active {
+    color: var(--sea-dark);
+    border-bottom-color: var(--coral);
+  }
+</style>

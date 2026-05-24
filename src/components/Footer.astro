@@ -1,0 +1,68 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="cols">
+      <div>
+        <strong>First &amp; Last Pickleball Club</strong>
+        <p>Playing year-round at GO! St Just — Britain's most westerly town, in the far west of Cornwall.</p>
+      </div>
+      <div>
+        <strong>Where we play</strong>
+        <p>
+          GO! St Just Sports &amp; Fitness Centre<br />
+          Cape Cornwall Road<br />
+          St Just, Penzance, TR19 7JX
+        </p>
+      </div>
+      <div>
+        <strong>Get involved</strong>
+        <ul class="plain">
+          <li><a href="/sessions">Session times</a></li>
+          <li><a href="/join">Join via Spond</a></li>
+          <li><a href="mailto:hello@firstandlastpickleball.co.uk">Email us</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal">
+      <span>© {year} First &amp; Last Pickleball Club</span>
+      <span>·</span>
+      <span>Made in Cornwall</span>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    background: var(--sea-dark);
+    color: var(--sand);
+    padding: 3rem 0 1.5rem;
+    margin-top: 4rem;
+  }
+  .site-footer strong {
+    display: block;
+    color: var(--paper);
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    margin-bottom: 0.5rem;
+  }
+  .site-footer a { color: var(--sand-dark); }
+  .site-footer a:hover { color: var(--paper); }
+  .cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 2rem;
+  }
+  .legal {
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(244, 234, 216, 0.15);
+    font-size: 0.85rem;
+    color: var(--sand-dark);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+</style>

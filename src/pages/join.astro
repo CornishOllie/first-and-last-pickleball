@@ -1,0 +1,160 @@
+---
+import Base from '../layouts/Base.astro';
+
+// TODO: replace with the real Spond group join link from the club's Spond admin
+const SPOND_JOIN_URL = 'https://spond.com/landing/club/REPLACE_ME';
+---
+
+<Base title="Join us" description="How to join First & Last Pickleball Club via the Spond app.">
+  <section>
+    <div class="container narrow">
+      <p class="eyebrow">Three steps</p>
+      <h1>Joining the club</h1>
+      <p class="lede">
+        We manage all of our sessions through <strong>Spond</strong> — a free app used by clubs across
+        Europe. Once you're in the group, you can see upcoming sessions, RSVP, and pay if there's a fee.
+      </p>
+
+      <ol class="steps">
+        <li>
+          <span class="num">1</span>
+          <div>
+            <h3>Get the Spond app</h3>
+            <p>
+              Free on
+              <a href="https://apps.apple.com/gb/app/spond/id1015425229" target="_blank" rel="noopener">iOS</a>
+              or
+              <a href="https://play.google.com/store/apps/details?id=com.spond.spond" target="_blank" rel="noopener">Android</a>.
+              You can also use it in a web browser at <a href="https://spond.com" target="_blank" rel="noopener">spond.com</a>.
+            </p>
+          </div>
+        </li>
+        <li>
+          <span class="num">2</span>
+          <div>
+            <h3>Request to join our group</h3>
+            <p>
+              Tap the button below — it opens our group's join page. We'll approve you within a day or so.
+            </p>
+            <p>
+              <a href={SPOND_JOIN_URL} class="btn" target="_blank" rel="noopener">Join First &amp; Last on Spond</a>
+            </p>
+            <p class="hint">
+              Can't see the join link? Email us at
+              <a href="mailto:hello@firstandlastpickleball.co.uk">hello@firstandlastpickleball.co.uk</a>
+              and we'll send you a fresh invite.
+            </p>
+          </div>
+        </li>
+        <li>
+          <span class="num">3</span>
+          <div>
+            <h3>Book a session and come along</h3>
+            <p>
+              Browse upcoming Tuesday and Sunday sessions, tap <em>I'm in</em>, and turn up. First-timers
+              should aim for Sunday morning — it's the friendliest place to start.
+            </p>
+            <p><a href="/sessions">See session times →</a></p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="faq">
+        <h2>A few common questions</h2>
+
+        <details>
+          <summary>I've never played pickleball — is that ok?</summary>
+          <p>
+            Absolutely. Sunday morning is the best time to come — bring trainers and a drink, we've got
+            paddles and balls you can borrow. Most people are rallying within their first session.
+          </p>
+        </details>
+
+        <details>
+          <summary>What does it cost?</summary>
+          <p>
+            Session fees are shown on Spond when you book. We keep them as low as we can — they cover
+            court hire at GO! St Just.
+          </p>
+        </details>
+
+        <details>
+          <summary>Can I just turn up?</summary>
+          <p>
+            We'd rather you booked through Spond — it helps us know numbers and balance the courts.
+            If you've genuinely just walked in off the street, come and say hi anyway.
+          </p>
+        </details>
+
+        <details>
+          <summary>Do I need my own kit?</summary>
+          <p>
+            Not at first. We have club paddles to borrow. Once you're hooked (and you will be) most
+            members pick up their own paddle for £30–£100 depending on level.
+          </p>
+        </details>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 48rem; }
+  .steps {
+    list-style: none;
+    padding: 0;
+    margin: 3rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .steps li {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .num {
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    background: var(--sea-dark);
+    color: var(--sand);
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .steps h3 { margin-bottom: 0.4rem; }
+  .hint { font-size: 0.9rem; color: var(--slate); }
+  .faq { margin-top: 3rem; }
+  .faq h2 { margin-bottom: 1rem; }
+  details {
+    border-bottom: 1px solid var(--line);
+    padding: 1rem 0;
+  }
+  details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--sea-dark);
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  details summary::after {
+    content: '+';
+    color: var(--coral);
+    font-size: 1.4rem;
+    font-weight: 700;
+  }
+  details[open] summary::after { content: '−'; }
+  details p { margin-top: 0.75rem; }
+</style>
