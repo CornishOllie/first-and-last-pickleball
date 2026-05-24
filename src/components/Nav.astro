@@ -1,14 +1,29 @@
 ---
 const { pathname } = Astro.url;
-const links = [
+
+type NavLink =
+  | { href: string; label: string }
+  | { label: string; children: { href: string; label: string }[] };
+
+const links: NavLink[] = [
   { href: '/', label: 'Home' },
   { href: '/sessions', label: 'Sessions' },
   { href: '/join', label: 'Join us' },
+  {
+    label: 'Learn',
+    children: [
+      { href: '/rules', label: 'Pickleball in 5 minutes' },
+      { href: '/code-of-conduct', label: 'Code of conduct' },
+    ],
+  },
   { href: '/news', label: 'News' },
   { href: '/about', label: 'About' },
 ];
+
 const isActive = (href: string) =>
   href === '/' ? pathname === '/' : pathname.startsWith(href);
+
+const learnActive = pathname.startsWith('/rules') || pathname.startsWith('/code-of-conduct');
 ---
 
 <header class="site-header">
@@ -22,20 +37,68 @@ const isActive = (href: string) =>
     </a>
     <nav aria-label="Primary">
       <ul>
-        {links.map((l) => (
-          <li>
-            <a href={l.href} class={isActive(l.href) ? 'active' : ''}>{l.label}</a>
-          </li>
-        ))}
+        {links.map((l) =>
+          'children' in l ? (
+            <li class="has-dropdown">
+              <button
+                type="button"
+                aria-expanded="false"
+                aria-haspopup="true"
+                class={learnActive ? 'active' : ''}
+              >
+                {l.label}
+                <span class="caret" aria-hidden="true">▾</span>
+              </button>
+              <ul class="dropdown" role="menu">
+                {l.children.map((c) => (
+                  <li role="none">
+                    <a href={c.href} role="menuitem" class={isActive(c.href) ? 'active' : ''}>
+                      {c.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ) : (
+            <li>
+              <a href={l.href} class={isActive(l.href) ? 'active' : ''}>{l.label}</a>
+            </li>
+          )
+        )}
       </ul>
     </nav>
   </div>
 </header>
 
+<script>
+  const triggers = document.querySelectorAll<HTMLButtonElement>('.has-dropdown > button');
+
+  function closeAll(except?: HTMLButtonElement) {
+    document
+      .querySelectorAll<HTMLButtonElement>('.has-dropdown > button[aria-expanded="true"]')
+      .forEach((b) => {
+        if (b !== except) b.setAttribute('aria-expanded', 'false');
+      });
+  }
+
+  triggers.forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      closeAll(btn);
+      btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+    });
+  });
+
+  document.addEventListener('click', () => closeAll());
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAll();
+  });
+</script>
+
 <style>
   .site-header {
     border-bottom: 1px solid var(--line);
-    background: var(--paper);
     position: sticky;
     top: 0;
     z-index: 50;
@@ -83,24 +146,87 @@ const isActive = (href: string) =>
     letter-spacing: 0.05em;
     text-transform: uppercase;
   }
-  nav ul {
+  nav > ul {
     display: flex;
     gap: 1.25rem;
     list-style: none;
     margin: 0;
     padding: 0;
     flex-wrap: wrap;
+    align-items: center;
   }
-  nav a {
+  nav > ul > li > a,
+  nav > ul > li > button {
     text-decoration: none;
     color: var(--slate);
     font-weight: 500;
     padding: 0.25rem 0;
     border-bottom: 2px solid transparent;
+    background: none;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    font: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
   }
-  nav a:hover { color: var(--sea); }
-  nav a.active {
+  nav > ul > li > a:hover,
+  nav > ul > li > button:hover {
+    color: var(--sea);
+  }
+  nav > ul > li > a.active,
+  nav > ul > li > button.active {
     color: var(--sea-dark);
     border-bottom-color: var(--coral);
+  }
+  .caret {
+    font-size: 0.7em;
+    transition: transform 0.15s ease;
+    display: inline-block;
+  }
+  .has-dropdown > button[aria-expanded="true"] .caret {
+    transform: rotate(180deg);
+  }
+  .has-dropdown {
+    position: relative;
+  }
+  .dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 0.6rem);
+    left: 0;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 0.4rem;
+    min-width: 240px;
+    box-shadow: 0 12px 36px rgba(8, 50, 58, 0.15);
+    list-style: none;
+    margin: 0;
+    z-index: 100;
+    flex-direction: column;
+  }
+  .has-dropdown > button[aria-expanded="true"] ~ .dropdown {
+    display: flex;
+  }
+  .dropdown li { padding: 0; }
+  .dropdown a {
+    display: block;
+    padding: 0.55rem 0.8rem;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--slate);
+    font-weight: 500;
+    border-bottom: none;
+  }
+  .dropdown a:hover {
+    background: var(--sand);
+    color: var(--sea-dark);
+  }
+  .dropdown a.active {
+    background: var(--sand);
+    color: var(--sea-dark);
   }
 </style>
