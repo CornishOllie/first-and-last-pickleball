@@ -1,0 +1,99 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Code of conduct" description="How we play, what we expect of each other, and how to raise a concern at First & Last Pickleball Club.">
+  <section>
+    <div class="container narrow">
+      <p class="eyebrow">How we play</p>
+      <h1>Code of conduct.</h1>
+      <p class="lede">
+        We play to win, but we play to play — most of all, we play together. This is how we keep
+        the club a place people want to come back to.
+      </p>
+
+      <h2>Respect each other</h2>
+      <p>
+        Treat partners, opponents, members and visitors the way you'd want to be treated. Welcome
+        new players. Praise good shots — yours and theirs. Lose graciously. Win graciously.
+      </p>
+
+      <h2>Call lines honestly</h2>
+      <p>
+        You call lines on your own side. If you're not sure, the ball is in — give the benefit of
+        the doubt to your opponent. If a partner disagrees, talk it out quickly and replay the
+        point if you can't agree. No one wins by cheating on line calls in a club session.
+      </p>
+
+      <h2>On court</h2>
+      <ul class="bullets">
+        <li>Keep your voice at a reasonable volume — the sports hall echoes and other groups may be sharing the space.</li>
+        <li>Look after the kit. Don't slam or throw paddles, however tempting after a missed third-shot drop.</li>
+        <li>Be ready when it's your turn — pick a session you'll actually attend on Spond, and arrive a few minutes early.</li>
+        <li>Share court time fairly. Rotate when sessions get busy.</li>
+        <li>No coaching mid-rally during competitive play. Tips at the end of a game are welcome.</li>
+      </ul>
+
+      <h2>Inclusivity</h2>
+      <p>
+        We want everyone — beginner or seasoned, junior or retiree — to feel welcome. If you're
+        more experienced, please mix it up with new players from time to time. It's how the club
+        grows, and it's how you got better in the first place.
+      </p>
+
+      <h2>Junior players</h2>
+      <p>
+        Sunday sessions are open to ages 10 and up; weekday Improvers from 14 up. When juniors are
+        on court, the standard expected of adult behaviour, language and attitude is higher, not
+        lower. Safeguarding concerns should be raised with the committee immediately — see below.
+      </p>
+
+      <h2>If something goes wrong</h2>
+      <p>
+        First try to sort it out directly and politely with the person concerned. If that doesn't
+        work, or if the matter is more serious, contact a member of the committee. Email
+        <a href="mailto:hello@firstandlastpickleball.co.uk">hello@firstandlastpickleball.co.uk</a> —
+        it goes to the committee inbox. We'll treat anything you tell us in confidence.
+      </p>
+
+      <h2>Bottom line</h2>
+      <p class="callout">
+        Don't be the person other members dread sharing a court with. That's it.
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 46rem; }
+  h2 { margin-top: 2.5rem; }
+  .bullets {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
+  }
+  .bullets li {
+    padding: 0.45rem 0 0.45rem 1.5rem;
+    position: relative;
+    border-bottom: 1px dashed var(--line);
+  }
+  .bullets li:last-child { border-bottom: none; }
+  .bullets li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.95rem;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--coral);
+  }
+  .callout {
+    background: var(--sand);
+    border-left: 3px solid var(--coral);
+    padding: 1rem 1.25rem;
+    border-radius: 0 6px 6px 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+  }
+</style>

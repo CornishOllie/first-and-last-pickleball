@@ -1,0 +1,171 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Pickleball in 5 minutes" description="A plain-English guide to pickleball rules, scoring and the kitchen — enough to walk onto a court and play.">
+  <section>
+    <div class="container narrow">
+      <p class="eyebrow">Never played?</p>
+      <h1>Pickleball in 5 minutes.</h1>
+      <p class="lede">
+        Pickleball is the friendliest racquet sport you've never tried. The rules fit on a postcard,
+        most people are rallying within their first session, and the rest you'll pick up by playing.
+      </p>
+
+      <h2>The basics</h2>
+      <ul class="bullets">
+        <li>Played on a court the size of a doubles badminton court (44 ft × 20 ft).</li>
+        <li>Solid paddle, perforated plastic ball — soft outdoor balls and harder indoor balls.</li>
+        <li>Mostly played as doubles. Singles exists, but it's brutal cardio.</li>
+        <li>First side to 11 wins, but you have to win by 2.</li>
+      </ul>
+
+      <h2>The serve</h2>
+      <ul class="bullets">
+        <li>Underhand only. Contact the ball <strong>below your waist</strong>.</li>
+        <li>You serve diagonally — into the opponent's far service box.</li>
+        <li>One attempt. There's no second serve like in tennis.</li>
+        <li>You serve from behind the baseline, both feet behind the line at contact.</li>
+        <li>A "drop serve" — bouncing the ball and hitting it off the bounce — is also legal.</li>
+      </ul>
+
+      <h2>The two-bounce rule</h2>
+      <p>
+        This is the one rule that surprises new players. After the serve:
+      </p>
+      <ol class="steps-list">
+        <li>The receiving team <strong>must let the serve bounce</strong> before returning it.</li>
+        <li>The serving team <strong>must let that return bounce</strong> before hitting it.</li>
+        <li>After those two bounces, anyone can volley (hit it out of the air) — except in the kitchen.</li>
+      </ol>
+
+      <h2>The kitchen (non-volley zone)</h2>
+      <p>
+        The 7-foot zone either side of the net is called the "kitchen". You can't volley a ball while
+        standing in it. You also can't be carried into it by your own momentum after a volley. You
+        can stand in the kitchen and play a ball that's bounced — just not volley from there.
+      </p>
+
+      <h2>Scoring</h2>
+      <p>
+        The traditional pickleball score is called as <strong>three numbers</strong>: your team's
+        score, the opponents' score, and which server you are (1 or 2).
+      </p>
+      <p>
+        Only the serving team can score. When you win the rally on your serve, you score and switch
+        sides with your partner. When you lose a rally, the serve passes — first to your partner,
+        then to the other team (a "side-out"). Very first serve of the game is the exception: only
+        one player serves before side-out.
+      </p>
+      <p class="callout">
+        Don't worry about getting the score right — everyone gets it wrong sometimes, including
+        seasoned players. Call it loudly, your opponents will keep you honest.
+      </p>
+
+      <h2>Common faults</h2>
+      <ul class="bullets">
+        <li>Ball lands out (lines are <em>in</em>).</li>
+        <li>Ball into the net.</li>
+        <li>Volley from inside the kitchen, or stepping into it during the swing.</li>
+        <li>Hitting the ball before it bounces during the two-bounce phase.</li>
+        <li>Serving incorrectly — above the waist, overhand, or wrong box.</li>
+      </ul>
+
+      <h2>The shots you'll hear about</h2>
+      <ul class="bullets">
+        <li><strong>Dink</strong> — a soft shot landing in the opponent's kitchen. The slow game.</li>
+        <li><strong>Drive</strong> — a flat, hard shot. The fast game.</li>
+        <li><strong>Drop</strong> — a soft shot from the back court that drops into the kitchen, giving you time to come forward.</li>
+        <li><strong>Lob</strong> — a high shot over your opponents at the net.</li>
+        <li><strong>Third-shot drop</strong> — the serving team's escape from the baseline. Famous for being hard.</li>
+      </ul>
+
+      <div class="cta-block">
+        <h3>That's it. Come and play.</h3>
+        <p>
+          Sunday mornings are the place to start — beginners welcome, paddles to borrow, friendly
+          faces. The rest you'll learn on court.
+        </p>
+        <a href="/join" class="btn">Join on Spond</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 46rem; }
+  h2 { margin-top: 2.5rem; }
+  .bullets {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
+  }
+  .bullets li {
+    padding: 0.45rem 0 0.45rem 1.5rem;
+    position: relative;
+    border-bottom: 1px dashed var(--line);
+  }
+  .bullets li:last-child { border-bottom: none; }
+  .bullets li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.95rem;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--coral);
+  }
+  .steps-list {
+    counter-reset: step;
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .steps-list li {
+    counter-increment: step;
+    padding: 1rem 1.25rem 1rem 3.5rem;
+    background: var(--sand);
+    border-radius: 10px;
+    position: relative;
+  }
+  .steps-list li::before {
+    content: counter(step);
+    position: absolute;
+    left: 1rem;
+    top: 0.85rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    background: var(--sea-dark);
+    color: var(--sand);
+    font-family: var(--font-display);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+  }
+  .callout {
+    background: var(--sand);
+    border-left: 3px solid var(--coral);
+    padding: 0.85rem 1rem;
+    border-radius: 0 6px 6px 0;
+    font-style: italic;
+  }
+  .cta-block {
+    margin: 3rem 0 0;
+    padding: 2rem;
+    background: var(--sea-dark);
+    color: var(--paper);
+    border-radius: 14px;
+    text-align: center;
+  }
+  .cta-block h3 { color: var(--paper); margin-bottom: 0.5rem; }
+  .cta-block p { color: var(--sand-dark); }
+  .cta-block .btn { background: var(--coral); }
+  .cta-block .btn:hover { background: var(--paper); color: var(--sea-dark); }
+</style>
