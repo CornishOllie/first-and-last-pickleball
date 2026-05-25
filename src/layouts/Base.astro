@@ -23,15 +23,16 @@ const fullTitle = title === 'Home' ? 'First & Last Pickleball Club' : `${title} 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#0e4f5b" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/img/logo.png" />
+    <link rel="apple-touch-icon" href="/img/logo.png" />
     <title>{fullTitle}</title>
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="en_GB" />
-    <meta property="og:image" content={new URL('/img/logo.jpg', Astro.site).toString()} />
+    <meta property="og:image" content={new URL('/img/logo.png', Astro.site).toString()} />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:image" content={new URL('/img/logo.jpg', Astro.site).toString()} />
+    <meta name="twitter:image" content={new URL('/img/logo.png', Astro.site).toString()} />
   </head>
   <body>
     <Nav />

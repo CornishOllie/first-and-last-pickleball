@@ -30,7 +30,7 @@ const learnActive = pathname.startsWith('/rules') || pathname.startsWith('/code-
 <header class="site-header">
   <div class="container nav-wrap">
     <a href="/" class="brand">
-      <img src="/img/logo.jpg" alt="" class="brand-mark" width="48" height="48" />
+      <img src="/img/logo.png" alt="" class="brand-mark" width="48" height="48" />
       <span class="brand-text">
         <strong>First &amp; Last</strong>
         <small>Pickleball Club · St Just</small>
@@ -168,13 +168,11 @@ const learnActive = pathname.startsWith('/rules') || pathname.startsWith('/code-
     color: var(--sea-dark);
   }
   .brand-mark {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    object-fit: cover;
-    object-position: center 30%;
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    object-position: center;
     display: block;
-    background: var(--sea-dark);
     flex-shrink: 0;
   }
   .brand-text {
