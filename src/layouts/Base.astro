@@ -29,6 +29,9 @@ const fullTitle = title === 'Home' ? 'First & Last Pickleball Club' : `${title} 
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="en_GB" />
+    <meta property="og:image" content={new URL('/img/logo.jpg', Astro.site).toString()} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:image" content={new URL('/img/logo.jpg', Astro.site).toString()} />
   </head>
   <body>
     <Nav />
