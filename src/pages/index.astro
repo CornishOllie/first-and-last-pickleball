@@ -114,6 +114,21 @@ const weekAtAGlance = [
     </div>
   </section>
 
+  <section class="sand tight">
+    <div class="container merch-band">
+      <div>
+        <p class="eyebrow">Coming soon</p>
+        <h2>Club merch is on its way.</h2>
+        <p>
+          Tees, hoodies, paddle covers and water bottles — all with the First &amp; Last badge.
+        </p>
+      </div>
+      <p>
+        <a href="/merch" class="btn secondary">Learn more</a>
+      </p>
+    </div>
+  </section>
+
   {posts.length > 0 && (
     <section>
       <div class="container">
@@ -251,6 +266,16 @@ const weekAtAGlance = [
   .community-band h2 { color: var(--paper); }
   .on-dark { color: var(--sand); }
   .on-dark a { color: var(--sand-dark); }
+
+  .merch-band {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+  .merch-band h2 { margin-bottom: 0.5rem; }
+  .merch-band p { margin: 0; }
 
   .news-card {
     text-decoration: none;

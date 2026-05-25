@@ -18,6 +18,7 @@ const links: NavLink[] = [
   },
   { href: '/news', label: 'News' },
   { href: '/about', label: 'About' },
+  { href: '/merch', label: 'Merch' },
 ];
 
 const isActive = (href: string) =>
@@ -35,7 +36,18 @@ const learnActive = pathname.startsWith('/rules') || pathname.startsWith('/code-
         <small>Pickleball Club · St Just</small>
       </span>
     </a>
-    <nav aria-label="Primary">
+
+    <button
+      type="button"
+      class="hamburger"
+      aria-label="Open menu"
+      aria-expanded="false"
+      aria-controls="primary-nav"
+    >
+      <span></span><span></span><span></span>
+    </button>
+
+    <nav id="primary-nav" aria-label="Primary">
       <ul>
         {links.map((l) =>
           'children' in l ? (
@@ -71,9 +83,11 @@ const learnActive = pathname.startsWith('/rules') || pathname.startsWith('/code-
 </header>
 
 <script>
-  const triggers = document.querySelectorAll<HTMLButtonElement>('.has-dropdown > button');
+  // Dropdown toggle (Learn menu)
+  const dropdownTriggers =
+    document.querySelectorAll<HTMLButtonElement>('.has-dropdown > button');
 
-  function closeAll(except?: HTMLButtonElement) {
+  function closeAllDropdowns(except?: HTMLButtonElement) {
     document
       .querySelectorAll<HTMLButtonElement>('.has-dropdown > button[aria-expanded="true"]')
       .forEach((b) => {
@@ -81,18 +95,52 @@ const learnActive = pathname.startsWith('/rules') || pathname.startsWith('/code-
       });
   }
 
-  triggers.forEach((btn) => {
+  dropdownTriggers.forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const expanded = btn.getAttribute('aria-expanded') === 'true';
-      closeAll(btn);
+      closeAllDropdowns(btn);
       btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
     });
   });
 
-  document.addEventListener('click', () => closeAll());
+  // Hamburger toggle (mobile)
+  const hamburger = document.querySelector<HTMLButtonElement>('.hamburger');
+  const header = document.querySelector<HTMLElement>('.site-header');
+
+  hamburger?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = hamburger.getAttribute('aria-expanded') === 'true';
+    hamburger.setAttribute('aria-expanded', open ? 'false' : 'true');
+    hamburger.setAttribute('aria-label', open ? 'Open menu' : 'Close menu');
+    header?.classList.toggle('menu-open', !open);
+    if (open) closeAllDropdowns();
+  });
+
+  // Close everything on outside click or Escape
+  document.addEventListener('click', () => {
+    closeAllDropdowns();
+    if (hamburger?.getAttribute('aria-expanded') === 'true') {
+      hamburger.setAttribute('aria-expanded', 'false');
+      hamburger.setAttribute('aria-label', 'Open menu');
+      header?.classList.remove('menu-open');
+    }
+  });
+
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeAll();
+    if (e.key === 'Escape') {
+      closeAllDropdowns();
+      if (hamburger?.getAttribute('aria-expanded') === 'true') {
+        hamburger.setAttribute('aria-expanded', 'false');
+        hamburger.setAttribute('aria-label', 'Open menu');
+        header?.classList.remove('menu-open');
+      }
+    }
+  });
+
+  // Don't close the menu when clicking inside it
+  document.querySelector('#primary-nav')?.addEventListener('click', (e) => {
+    e.stopPropagation();
   });
 </script>
 
@@ -111,7 +159,6 @@ const learnActive = pathname.startsWith('/rules') || pathname.startsWith('/code-
     justify-content: space-between;
     gap: 1rem;
     padding: 0.9rem 1.25rem;
-    flex-wrap: wrap;
   }
   .brand {
     display: flex;
@@ -128,6 +175,7 @@ const learnActive = pathname.startsWith('/rules') || pathname.startsWith('/code-
     object-position: center 30%;
     display: block;
     background: var(--sea-dark);
+    flex-shrink: 0;
   }
   .brand-text {
     display: flex;
@@ -145,13 +193,45 @@ const learnActive = pathname.startsWith('/rules') || pathname.startsWith('/code-
     letter-spacing: 0.05em;
     text-transform: uppercase;
   }
+
+  /* Hamburger button — hidden on desktop */
+  .hamburger {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    width: 44px;
+    height: 44px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+  }
+  .hamburger span {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: var(--sea-dark);
+    border-radius: 2px;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  .hamburger[aria-expanded="true"] span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+  }
+  .hamburger[aria-expanded="true"] span:nth-child(2) {
+    opacity: 0;
+  }
+  .hamburger[aria-expanded="true"] span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+
   nav > ul {
     display: flex;
     gap: 1.25rem;
     list-style: none;
     margin: 0;
     padding: 0;
-    flex-wrap: wrap;
     align-items: center;
   }
   nav > ul > li > a,
@@ -227,5 +307,82 @@ const learnActive = pathname.startsWith('/rules') || pathname.startsWith('/code-
   .dropdown a.active {
     background: var(--sand);
     color: var(--sea-dark);
+  }
+
+  /* Mobile breakpoint */
+  @media (max-width: 760px) {
+    .hamburger {
+      display: flex;
+    }
+    .brand-text small {
+      display: none;
+    }
+    #primary-nav {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 12px 24px rgba(8, 50, 58, 0.08);
+      padding: 0.5rem 1.25rem 1.25rem;
+    }
+    .site-header.menu-open #primary-nav {
+      display: block;
+    }
+    nav > ul {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+    }
+    nav > ul > li {
+      border-bottom: 1px solid var(--line);
+    }
+    nav > ul > li:last-child {
+      border-bottom: none;
+    }
+    nav > ul > li > a,
+    nav > ul > li > button {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 0.9rem 0;
+      border-bottom: none;
+    }
+    nav > ul > li > a.active,
+    nav > ul > li > button.active {
+      color: var(--sea-dark);
+      border-bottom: none;
+      position: relative;
+    }
+    nav > ul > li > a.active::before,
+    nav > ul > li > button.active::before {
+      content: '';
+      position: absolute;
+      left: -1.25rem;
+      top: 0.9rem;
+      bottom: 0.9rem;
+      width: 3px;
+      background: var(--coral);
+      border-radius: 0 2px 2px 0;
+    }
+    .dropdown {
+      position: static;
+      box-shadow: none;
+      border: none;
+      padding: 0 0 0.5rem 1rem;
+      background: transparent;
+      min-width: 0;
+    }
+    .dropdown a {
+      padding: 0.6rem 0;
+      font-size: 0.95rem;
+      color: var(--slate);
+    }
+    .dropdown a.active {
+      background: transparent;
+    }
   }
 </style>

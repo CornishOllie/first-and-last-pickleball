@@ -1,0 +1,86 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Merch" description="Club kit and merchandise from First & Last Pickleball Club — coming soon.">
+  <section>
+    <div class="container narrow text-center">
+      <p class="eyebrow">Club merch</p>
+      <h1>Coming soon.</h1>
+      <p class="lede">
+        We're putting together a small range of club merch — think t-shirts, hoodies, paddle covers
+        and water bottles, all with the First &amp; Last badge. Designed for the courts, the cliffs,
+        and everywhere in between.
+      </p>
+
+      <div class="card-grid">
+        <div class="placeholder-card">
+          <span class="placeholder-icon" aria-hidden="true">👕</span>
+          <strong>Tees &amp; hoodies</strong>
+          <p>In club colours, sensible weights for indoor play and Cornish weather.</p>
+        </div>
+        <div class="placeholder-card">
+          <span class="placeholder-icon" aria-hidden="true">🎾</span>
+          <strong>Paddle covers</strong>
+          <p>Protect your paddle on the way to the courts.</p>
+        </div>
+        <div class="placeholder-card">
+          <span class="placeholder-icon" aria-hidden="true">💧</span>
+          <strong>Water bottles</strong>
+          <p>Because hydration is half the game.</p>
+        </div>
+      </div>
+
+      <div class="cta-block">
+        <h3>Want to be first in line?</h3>
+        <p>
+          Drop us a note at
+          <a href="mailto:hello@firstandlastpickleball.co.uk">hello@firstandlastpickleball.co.uk</a>
+          and we'll let you know the moment it's live.
+        </p>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 46rem; }
+  .text-center { text-align: center; }
+  .text-center .lede { margin-left: auto; margin-right: auto; }
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.25rem;
+    margin: 3rem 0;
+    text-align: left;
+  }
+  .placeholder-card {
+    background: var(--paper);
+    border: 1px dashed var(--line);
+    border-radius: 14px;
+    padding: 1.5rem;
+  }
+  .placeholder-card strong {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    color: var(--sea-dark);
+    margin: 0.5rem 0 0.4rem;
+  }
+  .placeholder-card p {
+    margin: 0;
+    font-size: 0.92rem;
+    color: var(--slate);
+  }
+  .placeholder-icon {
+    font-size: 2rem;
+    display: block;
+  }
+  .cta-block {
+    margin: 3rem 0 0;
+    padding: 2rem;
+    background: var(--sand);
+    border-radius: 14px;
+  }
+  .cta-block h3 { margin-bottom: 0.5rem; }
+</style>
