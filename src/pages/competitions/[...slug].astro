@@ -45,8 +45,16 @@ const activeCols = d.standings
     <div class="container narrow">
       <p class="eyebrow">
         <span class={`badge badge-${d.status}`}>{statusLabel[d.status]}</span>
+        {d.sample && <span class="badge badge-sample">Sample</span>}
         <time datetime={d.date.toISOString()}> · {fmtDate(d.date)}</time>
       </p>
+
+      {d.sample && (
+        <p class="sample-note">
+          This is a sample competition with made-up results, here to show how the page looks. It'll
+          be replaced with real competitions soon.
+        </p>
+      )}
       <h1>{d.title}</h1>
       <p class="format">{d.format}</p>
       <p class="lede">{d.summary}</p>
@@ -126,7 +134,17 @@ const activeCols = d.standings
   .badge-upcoming { background: var(--sand-dark); color: var(--sea-dark); }
   .badge-live { background: var(--coral); color: var(--paper); }
   .badge-complete { background: var(--sea-dark); color: var(--sand); }
+  .badge-sample { background: transparent; color: var(--coral); border: 1px dashed var(--coral); }
   .eyebrow time { color: var(--sea-light); text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .sample-note {
+    background: #fff5ee;
+    border: 1px dashed var(--coral);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    font-size: 0.92rem;
+    color: var(--slate);
+    margin: 1rem 0 0;
+  }
   .format {
     font-family: var(--font-display);
     color: var(--sea-light);

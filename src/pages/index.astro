@@ -123,7 +123,7 @@ const weekAtAGlance = [
     <section>
       <div class="container result-band">
         <div>
-          <p class="eyebrow">Latest result</p>
+          <p class="eyebrow">Latest result{latestResult.data.sample && ' · sample'}</p>
           <h2>{latestResult.data.title}</h2>
           <p class="result-winner">🏆 Champions: <strong>{latestWinner}</strong></p>
           <p>{latestResult.data.summary}</p>

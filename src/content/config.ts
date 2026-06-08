@@ -21,6 +21,8 @@ const competitions = defineCollection({
     // live      → in progress (e.g. a box league running over weeks)
     // complete  → finished (shows podium + final standings)
     status: z.enum(['upcoming', 'live', 'complete']),
+    // Marks demo/placeholder content so it's clearly flagged on the site.
+    sample: z.boolean().optional(),
     summary: z.string(),
     // For 'upcoming' comps: a line on how to enter.
     entryInfo: z.string().optional(),

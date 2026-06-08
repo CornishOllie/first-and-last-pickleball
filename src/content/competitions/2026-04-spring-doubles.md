@@ -3,6 +3,7 @@ title: Spring Doubles Championship 2026
 date: 2026-04-19
 format: Round-robin doubles · Franklin X-40
 status: complete
+sample: true
 summary: Eight pairs, a full round-robin, and a final that went all the way to deuce.
 podium:
   - place: 1
@@ -25,8 +26,6 @@ photos:
   - /img/medals.jpg
   - /img/group.jpg
 ---
-
-> ⚠️ This is a sample competition with made-up results — here to show how the page looks. Replace or delete it once you've got a real one.
 
 A cracking turnout for the first championship of the year. Eight pairs played a full round-robin
 across the morning, with every pair guaranteed seven games.

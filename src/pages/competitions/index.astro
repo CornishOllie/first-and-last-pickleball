@@ -19,6 +19,7 @@ const champions = all
     title: c.data.title,
     date: c.data.date,
     slug: c.id,
+    sample: c.data.sample,
     winner: c.data.podium?.find((p) => p.place === 1)?.names,
   }))
   .filter((c) => c.winner)
@@ -50,7 +51,10 @@ const fmtDate = (d: Date) =>
               <li>
                 <a href={`/competitions/${c.id}`} class={`comp-card status-${c.data.status}`}>
                   <div class="comp-head">
-                    <span class={`badge badge-${c.data.status}`}>{statusLabel[c.data.status]}</span>
+                    <span class="badges">
+                      <span class={`badge badge-${c.data.status}`}>{statusLabel[c.data.status]}</span>
+                      {c.data.sample && <span class="badge badge-sample">Sample</span>}
+                    </span>
                     <time datetime={c.data.date.toISOString()}>{fmtDate(c.data.date)}</time>
                   </div>
                   <h2>{c.data.title}</h2>
@@ -82,7 +86,10 @@ const fmtDate = (d: Date) =>
             <li>
               <span class="ch-trophy" aria-hidden="true">🏆</span>
               <div class="ch-body">
-                <a href={`/competitions/${c.slug}`}>{c.title}</a>
+                <a href={`/competitions/${c.slug}`}>
+                  {c.title}
+                  {c.sample && <span class="badge badge-sample">Sample</span>}
+                </a>
                 <span class="ch-meta">{fmtDate(c.date)}</span>
               </div>
               <strong class="ch-winner">{c.winner}</strong>
@@ -139,6 +146,8 @@ const fmtDate = (d: Date) =>
   .badge-upcoming { background: var(--sand-dark); color: var(--sea-dark); }
   .badge-live { background: var(--coral); color: var(--paper); }
   .badge-complete { background: var(--sea-dark); color: var(--sand); }
+  .badge-sample { background: transparent; color: var(--coral); border: 1px dashed var(--coral); }
+  .badges { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; }
   .comp-card h2 { font-size: 1.3rem; margin: 0 0 0.25rem; }
   .comp-format {
     font-size: 0.85rem;
