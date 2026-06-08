@@ -1,0 +1,127 @@
+---
+import Base from '../layouts/Base.astro';
+
+const CONTACT_EMAIL = 'hello@firstandlastpickleball.co.uk';
+---
+
+<Base title="Privacy" description="How firstandlastpickleball.co.uk handles your data — analytics, cookies, and the third parties we use.">
+  <section>
+    <div class="container narrow">
+      <p class="eyebrow">The boring but important bit</p>
+      <h1>Privacy.</h1>
+      <p class="lede">
+        This is a small website for a pickleball club. It collects almost nothing about you. Here's
+        exactly what happens when you visit.
+      </p>
+
+      <h2>Who runs this site</h2>
+      <p>
+        firstandlastpickleball.co.uk is the website of First &amp; Last Pickleball Club, St Just. It's
+        a simple informational site — there are no accounts, no logins, and no forms that store your
+        details. For any privacy question, email
+        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+      </p>
+
+      <h2>What data the site holds about you</h2>
+      <p>
+        Browsing these pages doesn't require you to enter anything, and we don't ask you to. Two
+        things are worth being explicit about:
+      </p>
+
+      <h3>1. Privacy-friendly analytics</h3>
+      <p>
+        We use <a href="https://vercel.com/docs/analytics/privacy-policy" target="_blank" rel="noopener">Vercel
+        Web Analytics</a>, a privacy-focused tool that <strong>does not use cookies</strong>, does not
+        track you across other websites, and does not collect any personally identifiable information.
+        It records aggregate page views and referring domains so we know which parts of the site are
+        useful — that's it. There's no advertising on this site and we don't sell or share any data.
+      </p>
+
+      <h3>2. When you click through to Spond or email us</h3>
+      <p>
+        Joining the club happens on <a href="https://spond.com" target="_blank" rel="noopener">Spond</a>,
+        a separate service with its own privacy policy — anything you enter there is governed by
+        Spond, not this site. Likewise, if you email us, we'll hold your message (and your email
+        address) only for as long as we need to reply and deal with it.
+      </p>
+
+      <h2>Cookies in use</h2>
+      <p>
+        <strong>None.</strong> This site sets no cookies — not for analytics, not for anything. There's
+        no cookie banner because there's nothing to consent to.
+      </p>
+
+      <h2>Third parties</h2>
+      <p>The site relies on these providers to function:</p>
+      <ul class="bullets">
+        <li>
+          <strong>Vercel</strong> — hosting and analytics. To serve a page, Vercel processes the
+          minimum necessary request data (your IP address, browser type and the URL requested).
+        </li>
+        <li>
+          <strong>Google Fonts</strong> — the site's typefaces are loaded from Google's font service,
+          which receives your IP address as part of serving the font files.
+        </li>
+        <li>
+          <strong>Spond</strong> — only if you follow a link to join the club. Spond has its own
+          privacy policy that applies once you're on their site or app.
+        </li>
+      </ul>
+
+      <h2>Your rights under UK GDPR</h2>
+      <p>Because the site stores virtually nothing about you, these are simple to exercise:</p>
+      <ul class="bullets">
+        <li><strong>Access &amp; erasure:</strong> there's no account or server-side profile to access or delete. Aggregate analytics data is not personally identifiable. For anything held in our email, contact us below.</li>
+        <li><strong>Complain:</strong> you can complain to the UK Information Commissioner's Office (<a href="https://ico.org.uk" target="_blank" rel="noopener">ico.org.uk</a>) at any time.</li>
+      </ul>
+
+      <h2>Contact</h2>
+      <p>
+        Questions about any of this? Email
+        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> and we'll do our best to help.
+      </p>
+
+      <p class="footer-note">Last updated: June 2026.</p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 46rem; }
+  h2 {
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+  }
+  h2:first-of-type { border-top: none; padding-top: 0; }
+  h3 { margin-top: 1.5rem; }
+  .bullets {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
+  }
+  .bullets li {
+    padding: 0.55rem 0 0.55rem 1.5rem;
+    position: relative;
+    border-bottom: 1px dashed var(--line);
+  }
+  .bullets li:last-child { border-bottom: none; }
+  .bullets li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 1.05rem;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--coral);
+  }
+  .footer-note {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    color: var(--sea-light);
+    font-size: 0.85rem;
+    font-style: italic;
+  }
+</style>
