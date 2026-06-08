@@ -1,0 +1,200 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const all = await getCollection('competitions');
+
+const order = { live: 0, upcoming: 1, complete: 2 };
+const comps = all.sort((a, b) => {
+  // Live first, then upcoming, then complete; within each, newest first.
+  const s = order[a.data.status] - order[b.data.status];
+  if (s !== 0) return s;
+  return b.data.date.valueOf() - a.data.date.valueOf();
+});
+
+// Club Champions roll — auto-built from every completed comp's winner.
+const champions = all
+  .filter((c) => c.data.status === 'complete')
+  .map((c) => ({
+    title: c.data.title,
+    date: c.data.date,
+    slug: c.id,
+    winner: c.data.podium?.find((p) => p.place === 1)?.names,
+  }))
+  .filter((c) => c.winner)
+  .sort((a, b) => b.date.valueOf() - a.date.valueOf());
+
+const statusLabel = { live: 'In progress', upcoming: 'Upcoming', complete: 'Result' };
+
+const fmtDate = (d: Date) =>
+  d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+
+<Base title="Competitions" description="Club competitions, results and champions at First & Last Pickleball Club.">
+  <section>
+    <div class="container">
+      <p class="eyebrow">On court</p>
+      <h1>Competitions</h1>
+      <p class="lede">
+        Internal club tournaments, box leagues and one-off challenges — what's coming up, and who
+        came out on top.
+      </p>
+
+      {comps.length === 0 ? (
+        <p style="margin-top: 2rem;">Nothing scheduled just yet — watch this space.</p>
+      ) : (
+        <ul class="comp-list">
+          {comps.map((c) => {
+            const winner = c.data.podium?.find((p) => p.place === 1)?.names;
+            return (
+              <li>
+                <a href={`/competitions/${c.id}`} class={`comp-card status-${c.data.status}`}>
+                  <div class="comp-head">
+                    <span class={`badge badge-${c.data.status}`}>{statusLabel[c.data.status]}</span>
+                    <time datetime={c.data.date.toISOString()}>{fmtDate(c.data.date)}</time>
+                  </div>
+                  <h2>{c.data.title}</h2>
+                  <p class="comp-format">{c.data.format}</p>
+                  <p class="comp-summary">{c.data.summary}</p>
+                  {c.data.status === 'complete' && winner && (
+                    <p class="comp-winner">🏆 <strong>{winner}</strong></p>
+                  )}
+                  <span class="read-more">
+                    {c.data.status === 'upcoming' ? 'Details' : 'View'} →
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  </section>
+
+  {champions.length > 0 && (
+    <section class="sand">
+      <div class="container">
+        <p class="eyebrow">Roll of honour</p>
+        <h2>Club champions</h2>
+        <p class="lede">Every title winner, most recent first.</p>
+        <ul class="champions">
+          {champions.map((c) => (
+            <li>
+              <span class="ch-trophy" aria-hidden="true">🏆</span>
+              <div class="ch-body">
+                <a href={`/competitions/${c.slug}`}>{c.title}</a>
+                <span class="ch-meta">{fmtDate(c.date)}</span>
+              </div>
+              <strong class="ch-winner">{c.winner}</strong>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )}
+</Base>
+
+<style>
+  .comp-list {
+    list-style: none;
+    padding: 0;
+    margin: 2rem 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+  }
+  .comp-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1.5rem;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    text-decoration: none;
+    color: inherit;
+    background: var(--paper);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .comp-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(8, 50, 58, 0.08);
+  }
+  .comp-card.status-live { border-color: var(--coral); }
+  .comp-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .comp-head time { font-size: 0.82rem; color: var(--sea-light); }
+  .badge {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+  }
+  .badge-upcoming { background: var(--sand-dark); color: var(--sea-dark); }
+  .badge-live { background: var(--coral); color: var(--paper); }
+  .badge-complete { background: var(--sea-dark); color: var(--sand); }
+  .comp-card h2 { font-size: 1.3rem; margin: 0 0 0.25rem; }
+  .comp-format {
+    font-size: 0.85rem;
+    color: var(--sea-light);
+    margin: 0 0 0.75rem;
+    font-weight: 500;
+  }
+  .comp-summary { margin: 0 0 1rem; }
+  .comp-winner {
+    margin: 0 0 1rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--sand);
+    border-radius: 8px;
+    font-size: 0.95rem;
+  }
+  .read-more {
+    margin-top: auto;
+    color: var(--sea);
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .champions {
+    list-style: none;
+    padding: 0;
+    margin: 2rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .champions li {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.9rem 1.25rem;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .ch-trophy { font-size: 1.4rem; flex-shrink: 0; }
+  .ch-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+  .ch-body a {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--sea-dark);
+    text-decoration: none;
+  }
+  .ch-body a:hover { color: var(--coral); }
+  .ch-meta { font-size: 0.8rem; color: var(--sea-light); }
+  .ch-winner {
+    text-align: right;
+    color: var(--sea-dark);
+    flex-shrink: 0;
+  }
+  @media (max-width: 540px) {
+    .champions li { flex-wrap: wrap; }
+    .ch-winner { text-align: left; width: 100%; padding-left: 2.4rem; }
+  }
+</style>

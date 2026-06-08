@@ -6,6 +6,11 @@ const posts = (await getCollection('news'))
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
   .slice(0, 3);
 
+const latestResult = (await getCollection('competitions'))
+  .filter((c) => c.data.status === 'complete')
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())[0];
+const latestWinner = latestResult?.data.podium?.find((p) => p.place === 1)?.names;
+
 const weekAtAGlance = [
   { day: 'Sun', time: '08:00', label: 'Competition Prep · fixed partners' },
   { day: 'Sun', time: '09:00', label: '1st Sunday Session · beginners welcome' },
@@ -113,6 +118,23 @@ const weekAtAGlance = [
       </p>
     </div>
   </section>
+
+  {latestResult && latestWinner && (
+    <section>
+      <div class="container result-band">
+        <div>
+          <p class="eyebrow">Latest result</p>
+          <h2>{latestResult.data.title}</h2>
+          <p class="result-winner">🏆 Champions: <strong>{latestWinner}</strong></p>
+          <p>{latestResult.data.summary}</p>
+        </div>
+        <p class="result-cta">
+          <a href={`/competitions/${latestResult.id}`} class="btn secondary">Full result</a>
+          <a href="/competitions">All competitions →</a>
+        </p>
+      </div>
+    </section>
+  )}
 
   <section class="sand tight">
     <div class="container merch-band">
@@ -276,6 +298,28 @@ const weekAtAGlance = [
   }
   .merch-band h2 { margin-bottom: 0.5rem; }
   .merch-band p { margin: 0; }
+
+  .result-band {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+  .result-band h2 { margin-bottom: 0.5rem; }
+  .result-band p { margin: 0 0 0.5rem; }
+  .result-winner {
+    display: inline-block;
+    background: var(--sand);
+    padding: 0.5rem 0.85rem;
+    border-radius: 8px;
+  }
+  .result-cta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
 
   .news-card {
     text-decoration: none;

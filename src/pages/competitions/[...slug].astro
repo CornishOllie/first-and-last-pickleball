@@ -1,0 +1,234 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const comps = await getCollection('competitions');
+  return comps.map((comp) => ({
+    params: { slug: comp.id },
+    props: { comp },
+  }));
+}
+
+const { comp } = Astro.props;
+const { Content } = await render(comp);
+const d = comp.data;
+
+const statusLabel = { live: 'In progress', upcoming: 'Upcoming', complete: 'Result' };
+const fmtDate = (date: Date) =>
+  date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+const placeLabel = (n: number) =>
+  n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`;
+const medal = (n: number) => (n === 1 ? '🥇' : n === 2 ? '🥈' : n === 3 ? '🥉' : '');
+
+const podium = (d.podium ?? []).slice().sort((a, b) => a.place - b.place);
+
+// Which standings columns actually have data? Only render those.
+const cols = [
+  { key: 'rank', label: '#' },
+  { key: 'team', label: 'Player / pair' },
+  { key: 'played', label: 'P' },
+  { key: 'won', label: 'W' },
+  { key: 'lost', label: 'L' },
+  { key: 'pointsFor', label: 'PF' },
+  { key: 'pointsAgainst', label: 'PA' },
+  { key: 'points', label: 'Pts' },
+] as const;
+const activeCols = d.standings
+  ? cols.filter((c) => c.key === 'team' || d.standings!.some((r) => (r as any)[c.key] != null))
+  : [];
+---
+
+<Base title={d.title} description={d.summary}>
+  <section>
+    <div class="container narrow">
+      <p class="eyebrow">
+        <span class={`badge badge-${d.status}`}>{statusLabel[d.status]}</span>
+        <time datetime={d.date.toISOString()}> · {fmtDate(d.date)}</time>
+      </p>
+      <h1>{d.title}</h1>
+      <p class="format">{d.format}</p>
+      <p class="lede">{d.summary}</p>
+
+      {d.status === 'upcoming' && d.entryInfo && (
+        <div class="entry-box">
+          <h2>How to enter</h2>
+          <p>{d.entryInfo}</p>
+          <a href="/join" class="btn">Enter via Spond</a>
+        </div>
+      )}
+
+      {podium.length > 0 && (
+        <div class="podium">
+          {podium.map((p) => (
+            <div class={`podium-row place-${p.place}`}>
+              <span class="medal" aria-hidden="true">{medal(p.place)}</span>
+              <span class="place">{placeLabel(p.place)}</span>
+              <span class="names">
+                {p.names}
+                {p.note && <small>{p.note}</small>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {d.standings && d.standings.length > 0 && (
+        <div class="standings-wrap">
+          <h2>{d.status === 'complete' ? 'Final standings' : 'Standings'}</h2>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>{activeCols.map((c) => <th class={c.key === 'team' ? 'left' : ''}>{c.label}</th>)}</tr>
+              </thead>
+              <tbody>
+                {d.standings.map((row) => (
+                  <tr>
+                    {activeCols.map((c) => (
+                      <td class={c.key === 'team' ? 'left' : ''}>
+                        {(row as any)[c.key] ?? '–'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <article class="prose">
+        <Content />
+      </article>
+
+      {d.photos && d.photos.length > 0 && (
+        <div class="gallery">
+          {d.photos.map((src) => <img src={src} alt="" loading="lazy" />)}
+        </div>
+      )}
+
+      <p style="margin-top: 3rem;"><a href="/competitions">← All competitions</a></p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 46rem; }
+  .badge {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+  }
+  .badge-upcoming { background: var(--sand-dark); color: var(--sea-dark); }
+  .badge-live { background: var(--coral); color: var(--paper); }
+  .badge-complete { background: var(--sea-dark); color: var(--sand); }
+  .eyebrow time { color: var(--sea-light); text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .format {
+    font-family: var(--font-display);
+    color: var(--sea-light);
+    font-weight: 500;
+    margin: 0 0 1rem;
+  }
+
+  .entry-box {
+    margin: 2rem 0;
+    padding: 1.75rem;
+    background: var(--sand);
+    border-radius: 14px;
+  }
+  .entry-box h2 { margin-bottom: 0.5rem; }
+
+  .podium {
+    margin: 2.5rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .podium-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+  }
+  .podium-row.place-1 {
+    background: linear-gradient(100deg, #fff6e0, var(--paper));
+    border-color: #e6c34d;
+  }
+  .medal { font-size: 1.6rem; width: 1.8rem; text-align: center; flex-shrink: 0; }
+  .place {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--sea-light);
+    width: 3rem;
+    flex-shrink: 0;
+  }
+  .names {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--sea-dark);
+    display: flex;
+    flex-direction: column;
+  }
+  .names small {
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: var(--slate);
+  }
+
+  .standings-wrap { margin: 2.5rem 0; }
+  .standings-wrap h2 { margin-bottom: 1rem; }
+  .table-scroll { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  th, td {
+    padding: 0.6rem 0.5rem;
+    text-align: center;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  th {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--sea-light);
+  }
+  th.left, td.left { text-align: left; white-space: normal; }
+  tbody tr:first-child td { font-weight: 600; }
+  tbody tr:first-child td:first-child { color: var(--coral); }
+
+  .prose { margin-top: 2rem; font-size: 1.05rem; }
+  .prose :global(h2) { margin-top: 2rem; font-size: 1.4rem; }
+  .prose :global(blockquote) {
+    border-left: 3px solid var(--coral);
+    padding-left: 1rem;
+    color: var(--sea-dark);
+    font-style: italic;
+    margin: 1.5rem 0;
+  }
+
+  .gallery {
+    margin: 2.5rem 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+  }
+  .gallery img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    border-radius: 12px;
+  }
+</style>
