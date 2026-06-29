@@ -1,0 +1,137 @@
+---
+import Base from '../layouts/Base.astro';
+
+const FB = 'https://www.facebook.com/p/Lands-End-Pickleball-61577788711704/';
+const IG = 'https://www.instagram.com/landsendpickleball';
+const COACH_EMAIL = 'bookings@landsendpickleball.co.uk';
+---
+
+<Base title="Coaching" description="Professionally coached pickleball sessions at First & Last Pickleball Club for all abilities, plus private coaching with Land's End Pickleball.">
+  <section>
+    <div class="container narrow">
+      <p class="eyebrow">Get better, have fun</p>
+      <h1>Coaching.</h1>
+      <p class="lede">
+        First &amp; Last Pickleball Club offers fun, friendly and professionally coached sessions for
+        players of all abilities — led by our certified Pickleball England coaches.
+      </p>
+
+      <figure class="feature">
+        <img
+          src="/img/action.jpg"
+          alt="A coached session in progress at GO! St Just."
+          loading="lazy"
+        />
+      </figure>
+
+      <h2>Club coaching</h2>
+      <p>
+        Our sessions cater for complete beginners discovering the sport, improvers looking to build
+        confidence and consistency, and advanced players aiming to sharpen tactics, technique and
+        competition performance.
+      </p>
+      <p>
+        Each session combines expert coaching, engaging drills, match play and a welcoming club
+        atmosphere — helping every player develop at their own pace while enjoying one of the world's
+        fastest-growing sports.
+      </p>
+      <p>
+        Whether you're picking up a paddle for the first time or preparing for tournaments, you'll
+        find a supportive community and high-quality coaching with us. We also warmly welcome players
+        from other clubs to join our sessions, train together and enjoy great pickleball in Cornwall.
+      </p>
+      <p>
+        <a href="/sessions" class="btn">See session times</a>
+      </p>
+
+      <h2>Take your game further — Land's End Pickleball</h2>
+      <p>
+        Looking to take your game even further? <strong>Land's End Pickleball</strong>, led by
+        certified Pickleball England coach <strong>Alex Rowe</strong>, offers private and small-group
+        coaching tailored to your goals. Sessions are available for beginners, improvers and
+        competitive players, with a focus on technical development, tactical awareness, movement,
+        doubles strategy and match play.
+      </p>
+      <p>
+        Alex also offers specialist drills sessions, cardio pickleball, competition preparation and
+        optional video analysis to help players improve faster. Whether you're aiming to learn the
+        fundamentals or compete at a higher level, Land's End Pickleball provides personalised
+        coaching in a supportive, professional environment across Cornwall.
+      </p>
+
+      <ul class="services">
+        <li>Private &amp; small-group coaching</li>
+        <li>Technique &amp; tactics</li>
+        <li>Movement &amp; doubles strategy</li>
+        <li>Specialist drills sessions</li>
+        <li>Cardio pickleball</li>
+        <li>Competition prep</li>
+        <li>Optional video analysis</li>
+      </ul>
+
+      <div class="coach-card">
+        <h3>Get in touch with Alex</h3>
+        <p>
+          Alex's own website is on its way. In the meantime, reach out by email or follow along on
+          social for availability and updates.
+        </p>
+        <p class="contact-links">
+          <a href={`mailto:${COACH_EMAIL}`} class="btn">Email Land's End Pickleball</a>
+        </p>
+        <p class="socials">
+          <a href={FB} target="_blank" rel="noopener">Facebook ↗</a>
+          <a href={IG} target="_blank" rel="noopener">Instagram ↗</a>
+        </p>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 48rem; }
+  h2 { margin-top: 2.5rem; }
+  .feature { margin: 2rem 0; }
+  .feature img {
+    width: 100%;
+    max-height: 360px;
+    object-fit: cover;
+    object-position: center 30%;
+    border-radius: 14px;
+    display: block;
+  }
+  .services {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+  .services li {
+    background: var(--sand);
+    color: var(--sea-dark);
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  .coach-card {
+    margin: 2.5rem 0 0;
+    padding: 2rem;
+    background: var(--sea-dark);
+    color: var(--paper);
+    border-radius: 14px;
+  }
+  .coach-card h3 { color: var(--paper); margin-bottom: 0.5rem; }
+  .coach-card p { color: var(--sand-dark); }
+  .coach-card .btn { background: var(--coral); }
+  .coach-card .btn:hover { background: var(--paper); color: var(--sea-dark); }
+  .contact-links { margin: 1.25rem 0 1rem; }
+  .socials {
+    display: flex;
+    gap: 1.25rem;
+    margin: 0;
+  }
+  .socials a { color: var(--sand); font-weight: 600; }
+  .socials a:hover { color: var(--paper); }
+</style>
