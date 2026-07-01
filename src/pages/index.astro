@@ -94,15 +94,18 @@ const weekAtAGlance = [
           <a href="/sessions" class="btn">Full schedule &amp; prices</a>
         </p>
       </div>
-      <ul class="plain week-list">
-        {weekAtAGlance.map((row) => (
-          <li>
-            <span class="wl-day">{row.day}</span>
-            <span class="wl-time">{row.time}</span>
-            <span class="wl-label">{row.label}</span>
-          </li>
-        ))}
-      </ul>
+      <div>
+        <ul class="plain week-list">
+          {weekAtAGlance.map((row) => (
+            <li>
+              <span class="wl-day">{row.day}</span>
+              <span class="wl-time">{row.time}</span>
+              <span class="wl-label">{row.label}</span>
+            </li>
+          ))}
+        </ul>
+        <p class="week-note">Times can change through the season — always check Spond for the latest.</p>
+      </div>
     </div>
   </section>
 
@@ -263,6 +266,12 @@ const weekAtAGlance = [
     font-size: 0.95rem;
   }
   .wl-label { color: var(--slate); font-size: 0.95rem; }
+  .week-note {
+    margin: 0.75rem 0 0;
+    font-size: 0.85rem;
+    color: var(--sea-light);
+    font-style: italic;
+  }
 
   .community-band {
     position: relative;

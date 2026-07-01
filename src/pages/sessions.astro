@@ -90,6 +90,14 @@ const sessions = [
 
   <section>
     <div class="container">
+      <p class="check-spond">
+        <span class="cs-icon" aria-hidden="true">📅</span>
+        <span>
+          <strong>Always check Spond for the latest times.</strong> Session times can change through
+          the season — the times below are a guide, and <a href="/join">Spond</a> is where the
+          up-to-date schedule always lives.
+        </span>
+      </p>
       <div class="sessions-list">
         {sessions.map((s) => (
           <article class={`session ${s.flag ? 'flagged' : ''}`}>
@@ -158,6 +166,19 @@ const sessions = [
 </Base>
 
 <style>
+  .check-spond {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+    background: #fff5ee;
+    border: 1px solid var(--coral);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin: 0 0 2rem;
+  }
+  .check-spond .cs-icon { font-size: 1.3rem; line-height: 1.4; flex-shrink: 0; }
+  .check-spond span:last-child { font-size: 0.95rem; }
+
   .hero-band {
     position: relative;
     color: var(--paper);
