@@ -51,7 +51,7 @@ Helen and Jacquie took bronze, beating Vicky and Alice in the third place play-o
 
 ## Thank you
 
-Huge thanks to Alex for a brilliantly planned day, and to [UK Pickleball Shop](https://pickleball.co.uk) for sponsoring it and providing the medals and goodies. The prize table had UK Pickleball Shop water bottles, pens and keyrings, plus vouchers for Land's End Pickleball coaching.
+Huge thanks to Alex for a brilliantly planned day, and to [UK Pickleball Shop](https://pickleball.co.uk) for sponsoring it and providing the medals and goodies. The prize table had UK Pickleball Shop water bottles, pens and keyrings, a UK Pickleball Shop discount code, and vouchers for Land's End Pickleball coaching.
 
 Alex put it better than we can in his own post about the day:
 
