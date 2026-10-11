@@ -15,8 +15,7 @@ podium:
     note: Beat Vicky and Alice in the third place play-off
 photos:
   - /img/dt-podium.jpg
-  - /img/dt-hall.jpg
-  - /img/dt-rally.jpg
+  - /img/dt-final.jpg
 ---
 
 Sixteen players, two hours of coaching with Alex Rowe of Land's End Pickleball, then a round-robin

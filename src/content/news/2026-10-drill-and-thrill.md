@@ -33,11 +33,11 @@ After two hours of drills and a short break, it was straight into a round-robin 
 
 Ollie and Megan and Paul and Luke won through to the final, with Helen and Jacquie playing Vicky and Alice for third.
 
-![Doubles in full flow on the St Just courts](/img/dt-rally.jpg)
-
 ## The final
 
 It was a belter. Luke and Paul beat Ollie and Megan **11-10** in a very competitive match, with one point between the pairs at the end. An all-time classic.
+
+![Action from the final](/img/dt-final.jpg)
 
 ![Luke and Paul with their gold medals](/img/dt-gold.jpg)
 
