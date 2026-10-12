@@ -28,10 +28,10 @@ Alex also let us shape the morning with a pre-event drill poll on Spond, so the 
 
 After two hours of drills and a short break, it was straight into a round-robin of doubles. The top four pairs went through to the semi-finals:
 
-- Vicky and Alice v Ollie and Megan
+- Vickie and Alice v Ollie and Megan
 - Paul and Luke v Helen and Jacquie
 
-Ollie and Megan and Paul and Luke won through to the final, with Helen and Jacquie playing Vicky and Alice for third.
+Ollie and Megan and Paul and Luke won through to the final, with Helen and Jacquie playing Vickie and Alice for third.
 
 ## The final
 
@@ -43,7 +43,7 @@ It was a belter. Luke and Paul beat Ollie and Megan **11-10** in a very competit
 
 ![Ollie and Megan with their silver medals](/img/dt-silver.jpg)
 
-Helen and Jacquie took bronze, beating Vicky and Alice in the third place play-off.
+Helen and Jacquie took bronze, beating Vickie and Alice in the third place play-off.
 
 ![Helen and Jacquie with their bronze medals](/img/dt-bronze.jpg)
 

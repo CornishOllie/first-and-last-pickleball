@@ -12,14 +12,14 @@ podium:
     names: Ollie & Megan
   - place: 3
     names: Helen & Jacquie
-    note: Beat Vicky and Alice in the third place play-off
+    note: Beat Vickie and Alice in the third place play-off
 photos:
   - /img/dt-podium.jpg
   - /img/dt-final.jpg
 ---
 
 Sixteen players, two hours of coaching with Alex Rowe of Land's End Pickleball, then a round-robin
-to find the top four pairs. Semi-finals: Vicky and Alice v Ollie and Megan, and Paul and Luke v
+to find the top four pairs. Semi-finals: Vickie and Alice v Ollie and Megan, and Paul and Luke v
 Helen and Jacquie. Luke and Paul beat Ollie and Megan 11-10 in the final.
 
 Sponsored by UK Pickleball Shop. Read the [full write-up](/news/2026-10-drill-and-thrill).
