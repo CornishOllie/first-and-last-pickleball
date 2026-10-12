@@ -40,7 +40,6 @@ export const outsideEvents: OutsideEvent[] = [
     details:
       "Men's, women's and mixed doubles, Open and 50+, at 3.0, 3.5 and 4.0 levels. Round robin then knockout, with at least four matches each. £28 per person per event. Entries close 15 November, or sooner if it fills.",
     url: 'https://pickleballuktour.co.uk/event/bristol-pickleball-uk-tour-winter-2026-tournament/',
-    note: 'Same day as our own Club Doubles Tournament.',
   },
   {
     name: 'Swindon Winter Tournament',
