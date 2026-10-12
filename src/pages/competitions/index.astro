@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { getCollection } from 'astro:content';
+import { outsideEvents, calendarLinks } from '../../data/outside-events';
 
 const all = await getCollection('competitions');
 
@@ -24,6 +25,12 @@ const champions = all
   }))
   .filter((c) => c.winner)
   .sort((a, b) => b.date.valueOf() - a.date.valueOf());
+
+// Other people's tournaments in the South West. Hide any that have finished.
+const today = new Date().toISOString().slice(0, 10);
+const outside = outsideEvents
+  .filter((e) => (e.end ?? e.start) >= today)
+  .sort((a, b) => a.start.localeCompare(b.start));
 
 const statusLabel = { live: 'In progress', upcoming: 'Upcoming', complete: 'Result' };
 
@@ -75,6 +82,43 @@ const fmtDate = (d: Date) =>
     </div>
   </section>
 
+  {outside.length > 0 && (
+    <section>
+      <div class="container">
+        <p class="eyebrow">Out and about</p>
+        <h2>Other tournaments in the South West</h2>
+        <p class="lede">
+          Plenty of us enter tournaments around the region. Here's what's coming up. Always check
+          the organiser's page for the latest prices, entry deadlines and times.
+        </p>
+        <ul class="outside-list">
+          {outside.map((e) => (
+            <li class="outside-card">
+              <div class="comp-head">
+                <span class="badges">
+                  {e.clubGoing && <span class="badge badge-going">We're going</span>}
+                </span>
+                <time datetime={e.start}>{e.when}</time>
+              </div>
+              <h3>{e.name}</h3>
+              <p class="comp-format">{e.venue}</p>
+              <p class="comp-format">Run by {e.organiser}</p>
+              <p class="comp-summary">{e.details}</p>
+              {e.note && <p class="outside-note">{e.note}</p>}
+              <a href={e.url} target="_blank" rel="noopener" class="read-more">Details and entry ↗</a>
+            </li>
+          ))}
+        </ul>
+        <p class="outside-more">
+          More events, including national ones:
+          {calendarLinks.map((l, i) => (
+            <>{i > 0 && ' · '}<a href={l.url} target="_blank" rel="noopener">{l.label} ↗</a></>
+          ))}
+        </p>
+      </div>
+    </section>
+  )}
+
   {champions.length > 0 && (
     <section class="sand">
       <div class="container">
@@ -102,6 +146,34 @@ const fmtDate = (d: Date) =>
 </Base>
 
 <style>
+  .outside-list {
+    list-style: none;
+    padding: 0;
+    margin: 2rem 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+  }
+  .outside-card {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--paper);
+  }
+  .outside-card h3 { font-size: 1.3rem; margin: 0 0 0.25rem; }
+  .outside-card .comp-format { margin: 0 0 0.25rem; }
+  .outside-card .comp-summary { margin: 0.5rem 0 1rem; }
+  .badge-going { background: var(--coral); color: var(--paper); white-space: nowrap; }
+  .outside-note {
+    margin: 0 0 1rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--sand);
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+  .outside-more { margin-top: 1.5rem; font-size: 0.95rem; }
   .comp-list {
     list-style: none;
     padding: 0;
