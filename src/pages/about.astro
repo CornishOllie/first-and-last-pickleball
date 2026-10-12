@@ -1,5 +1,15 @@
 ---
 import Base from '../layouts/Base.astro';
+
+const committee = [
+  { role: 'Chair and Deputy Designated Safeguarding Lead', names: 'Tamsyn May' },
+  { role: 'Club Captain and Vice Chair', names: 'Alex Rowe' },
+  { role: 'Treasurer', names: 'Rachel Oldland' },
+  { role: 'Secretary', names: 'Rachel Oldland and Megan Rowland' },
+  { role: 'Designated Safeguarding Lead', names: 'Vickie Hugh-Jones' },
+  { role: 'Club Coaches', names: 'Alex Rowe and Neil Donaldson' },
+  { role: 'Sub-committee', names: 'Jacquie Lamb, Jonny Walker and Adrian Forde' },
+];
 ---
 
 <Base title="About" description="About First & Last Pickleball Club in St Just, Cornwall.">
@@ -44,9 +54,15 @@ import Base from '../layouts/Base.astro';
       </figure>
 
       <h2>Committee</h2>
-      <p class="placeholder">
-        <em>(Add committee names &amp; roles here — chair, treasurer, sessions lead, etc.)</em>
-      </p>
+      <p>Voted in at the AGM.</p>
+      <dl class="committee">
+        {committee.map((m) => (
+          <div>
+            <dt>{m.role}</dt>
+            <dd>{m.names}</dd>
+          </div>
+        ))}
+      </dl>
 
       <h2>History</h2>
       <p class="placeholder">
@@ -75,6 +91,16 @@ import Base from '../layouts/Base.astro';
     border-radius: 14px;
     display: block;
   }
+  .committee { margin: 1rem 0 2rem; }
+  .committee > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.5rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--sand);
+  }
+  .committee dt { flex: 0 0 15rem; font-weight: 600; color: var(--sea-dark); }
+  .committee dd { margin: 0; flex: 1 1 12rem; }
   .placeholder {
     background: var(--sand);
     border-left: 3px solid var(--coral);
