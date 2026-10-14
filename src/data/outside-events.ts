@@ -40,6 +40,7 @@ export const outsideEvents: OutsideEvent[] = [
     organiser: 'Penzance Pickleball Club',
     details:
       "Up to 24 pairs (48 players) on 12 courts, with at least 5 games each and a knockout stage for the podium. No partner? Enter as an individual and they'll match you up. Entry is £25, paid before the event. Medals or trophies for the top three, plus prizes such as club T-shirts, free open sessions and vouchers. To enter, message Penzance Pickleball Club or comment on their post with your partner's name.",
+    clubGoing: true,
   },
   {
     name: 'Bristol Winter Tournament',
