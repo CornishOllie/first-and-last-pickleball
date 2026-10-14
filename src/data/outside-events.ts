@@ -14,6 +14,8 @@ export interface OutsideEvent {
   details: string;
   /** Booking or info link. Leave out if the organiser only takes entries by message. */
   url?: string;
+  /** Entry email, shown as a mailto link. */
+  email?: string;
   /** Set when club members are going. */
   clubGoing?: boolean;
   /** Anything worth a heads-up, e.g. a clash with a club date. */
@@ -39,7 +41,8 @@ export const outsideEvents: OutsideEvent[] = [
     venue: 'Mounts Bay Academy, Penzance',
     organiser: 'Penzance Pickleball Club',
     details:
-      "Up to 24 pairs (48 players) on 12 courts, with at least 5 games each and a knockout stage for the podium. No partner? Enter as an individual and they'll match you up. Entry is £25, paid before the event. Medals or trophies for the top three, plus prizes such as club T-shirts, free open sessions and vouchers. To enter, message Penzance Pickleball Club or comment on their post with your partner's name.",
+      "Up to 24 pairs (48 players) on 12 courts, with at least 5 games each and a knockout stage for the podium. No partner? Enter as an individual and they'll match you up. Entry is £25, paid before the event. Medals or trophies for the top three, plus prizes such as club T-shirts, free open sessions and vouchers. To enter, email the club, or join their Spond group with the code MKBJX and you'll be invited to the competition automatically.",
+    email: 'penzancepickleballclub@gmail.com',
     clubGoing: true,
   },
   {

@@ -106,6 +106,7 @@ const fmtDate = (d: Date) =>
               <p class="comp-summary">{e.details}</p>
               {e.note && <p class="outside-note">{e.note}</p>}
               {e.url && <a href={e.url} target="_blank" rel="noopener" class="read-more">Details and entry ↗</a>}
+              {e.email && <a href={`mailto:${e.email}`} class="read-more">Email to enter</a>}
             </li>
           ))}
         </ul>
