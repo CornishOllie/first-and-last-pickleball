@@ -12,7 +12,8 @@ export interface OutsideEvent {
   venue: string;
   organiser: string;
   details: string;
-  url: string;
+  /** Booking or info link. Leave out if the organiser only takes entries by message. */
+  url?: string;
   /** Set when club members are going. */
   clubGoing?: boolean;
   /** Anything worth a heads-up, e.g. a clash with a club date. */
@@ -30,6 +31,15 @@ export const outsideEvents: OutsideEvent[] = [
     details:
       'Nine indoor courts, self-rated so you play at your own level, with open play and a free mixed doubles knockout. Day tickets £25, weekend £40, juniors £15.',
     url: 'https://www.tickettailor.com/events/torquaypickleballclub/2166864',
+  },
+  {
+    name: 'Penzance Doubles Tournament',
+    start: '2026-11-15',
+    when: 'Sunday 15 November, 9am to 2pm',
+    venue: 'Mounts Bay Academy, Penzance',
+    organiser: 'Penzance Pickleball Club',
+    details:
+      "Up to 24 pairs (48 players) on 12 courts, with at least 5 games each and a knockout stage for the podium. No partner? Enter as an individual and they'll match you up. Entry is £25, paid before the event. Medals or trophies for the top three, plus prizes such as club T-shirts, free open sessions and vouchers. To enter, message Penzance Pickleball Club or comment on their post with your partner's name.",
   },
   {
     name: 'Bristol Winter Tournament',

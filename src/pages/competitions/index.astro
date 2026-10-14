@@ -105,7 +105,7 @@ const fmtDate = (d: Date) =>
               <p class="comp-format">Run by {e.organiser}</p>
               <p class="comp-summary">{e.details}</p>
               {e.note && <p class="outside-note">{e.note}</p>}
-              <a href={e.url} target="_blank" rel="noopener" class="read-more">Details and entry ↗</a>
+              {e.url && <a href={e.url} target="_blank" rel="noopener" class="read-more">Details and entry ↗</a>}
             </li>
           ))}
         </ul>
