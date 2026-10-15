@@ -1,0 +1,224 @@
+---
+import Base from '../layouts/Base.astro';
+
+// Content adapted from the club's Self-Rating Guide (PDF). Items are HTML so the
+// bold figures from the original carry over.
+const levels = [
+  {
+    name: 'Beginner',
+    lead: 'You are likely here if most of the following are true:',
+    items: [
+      'Serve lands in <strong>50–70%</strong> of attempts.',
+      'Return of serve successful <strong>50–70%</strong> of the time.',
+      'Rally length typically <strong>1–4 shots</strong>.',
+      'Still learning the rules (kitchen, double bounce, scoring).',
+      'Often hits balls <strong>too high</strong>, <strong>into the net</strong>, or <strong>out</strong>.',
+      'Footwork is reactive; rarely reaches the NVZ consistently.',
+      'Relies mostly on forehand; backhand is weak or avoided.',
+      'Unforced errors: <strong>10+ per game</strong>.',
+    ],
+    sum: "If you can't consistently complete rallies yet, you're a Beginner.",
+  },
+  {
+    name: 'Improver',
+    lead: 'You fit here if you can measure most of the following:',
+    items: [
+      'Serve lands <strong>75–85%</strong> of attempts.',
+      'Return of serve successful <strong>75–85%</strong>.',
+      'Rally length commonly <strong>4–8 shots</strong>.',
+      'Gets to the NVZ sometimes, but not consistently under pressure.',
+      'Can dink, but dinks are often <strong>too high or inconsistent</strong>.',
+      'Attempts third shot drops but only <strong>successful about 30–40%</strong>.',
+      'Can volley but lacks directional control.',
+      'Understands rules and general positioning.',
+      'Unforced errors: <strong>7–10 per game</strong>.',
+    ],
+    sum: "If you can play, but consistency is still the main issue, you're an Improver.",
+  },
+  {
+    name: 'Intermediate',
+    lead: 'You are likely an Intermediate if measurable play looks like this:',
+    items: [
+      'Serve successful <strong>90%+</strong> with reasonable depth.',
+      'Return of serve <strong>90%+</strong>, usually past the NVZ line.',
+      'Rally length commonly <strong>8+ shots</strong>.',
+      'Gets to the NVZ <strong>most points</strong> when possible.',
+      'Dinks are controlled <strong>60–70%</strong> of the time.',
+      'Third shot drop works <strong>40–60%</strong> of attempts.',
+      'Can reset occasionally but struggles under pressure.',
+      "Beginning to place shots toward opponents' weaknesses.",
+      'Unforced errors: <strong>5–7 per game</strong>.',
+    ],
+    sum: "If you're consistent and understand strategy, but execution varies, you're an Intermediate.",
+  },
+  {
+    name: 'High Intermediate',
+    lead: 'You fit this level when most of these are true:',
+    items: [
+      'Serve and return <strong>&gt;95%</strong> and intentionally placed.',
+      '<strong>Routinely reaches and plays confidently at the NVZ.</strong>',
+      '<strong>Can sustain dink rallies of 10–20+ balls.</strong>',
+      '<strong>Third-shot drop success 60–75%.</strong>',
+      '<strong>Effective mix of drops, drives, and lobs (chosen with purpose).</strong>',
+      '<strong>Reads attacks and can block or reset into the kitchen regularly.</strong>',
+      'Wins many points through patience rather than luck.',
+      'Controls pace instead of reacting.',
+      'Unforced errors: <strong>3–5 per game</strong>.',
+    ],
+    sum: "If you're reliable, strategic and competitive in strong open play, you're at this level.",
+  },
+  {
+    name: 'Advanced',
+    lead: 'You are likely here if these are consistently true:',
+    items: [
+      'Serves and returns are <strong>deep, purposeful, and &gt;98%</strong> consistent.',
+      'Strong footwork; reaches the NVZ early and maintains control.',
+      'Dinking is strategic: varies <strong>height, depth, angle, speed</strong>.',
+      'Third-shot drop success <strong>75–90%</strong>, including under pressure.',
+      'Transition game is strong: resets, blocks, counters with intent.',
+      'Frequently initiates and wins hand-speed battles.',
+      'Anticipates instead of reacting; reads patterns quickly.',
+      'Communication and court coverage with partner are excellent.',
+      'Unforced errors: <strong>0–3 per game</strong> while still playing aggressively.',
+    ],
+    sum: "If you control points rather than simply participate, you're at the Advanced level.",
+  },
+];
+
+const tests = {
+  head: ['Skill test', 'Beginner', 'Improver', 'Intermediate', 'High Int', 'Advanced'],
+  rows: [
+    ['Serve in 20 attempts', '14 or fewer', '15–17', '18–19', '19–20', '20'],
+    ['Returns deep (past the NVZ) out of 20', '10 or fewer', '11–14', '15–17', '18–19', '19–20'],
+    ['Consistent dink rally count', '5 or fewer', '6–10', '10–15', '15–25', '25+'],
+    ['Third-shot drop success (20 tries)', '6 or fewer', '7–9', '10–12', '13–15', '16–18'],
+    ['Average unforced errors per game', '10+', '7–10', '5–7', '3–5', '0–3'],
+  ],
+};
+---
+
+<Base title="Find your level" description="A self-rating guide from First & Last Pickleball Club. Work out whether you're a Beginner, Improver, Intermediate, High Intermediate or Advanced player, using measurable criteria.">
+  <section>
+    <div class="container narrow">
+      <p class="eyebrow">Learn</p>
+      <h1>Find your level.</h1>
+      <p class="lede">
+        A self-rating guide to help you work out your playing level. Anyone at the club can use it.
+        It is <strong>not</strong> a mandatory test, just a way to be honest with yourself about
+        where you are and where to go next.
+      </p>
+
+      <p>
+        Choose the level where you meet most of the measurable criteria (around 80 to 90% of the
+        listed points). The key is <strong>consistency</strong>, rather than what you might achieve
+        occasionally. This guide also forms part of the assessment for Intermediate Plus on
+        Wednesdays, alongside things like the <a href="/code-of-conduct">code of conduct</a> and
+        sportsmanship.
+      </p>
+      <p class="note">
+        <strong>NVZ</strong> is the non-volley zone, also called the kitchen.
+      </p>
+
+      <p class="download">
+        <a href="/files/self-evaluation-guide.pdf" class="btn secondary" download>
+          Download the printable PDF
+        </a>
+      </p>
+
+      {levels.map((lv) => (
+        <section class="level">
+          <h2>{lv.name}</h2>
+          <p class="lead">{lv.lead}</p>
+          <ul class="checks">
+            {lv.items.map((it) => (
+              <li><span class="box" aria-hidden="true"></span><span set:html={it} /></li>
+            ))}
+          </ul>
+          <p class="sum">{lv.sum}</p>
+        </section>
+      ))}
+
+      <h2>Quick self-test</h2>
+      <p>Try these in real play or practice, then see where your numbers fall.</p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>{tests.head.map((h, i) => <th class={i === 0 ? 'left' : ''}>{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {tests.rows.map((row) => (
+              <tr>{row.map((c, i) => <td class={i === 0 ? 'left' : ''}>{c}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h2>How to choose your level</h2>
+      <ol class="steps">
+        <li>Play normally.</li>
+        <li>Track the measurable points over 2 to 3 games.</li>
+        <li>Rate yourself at the level where you match <strong>most</strong> of the metrics.</li>
+        <li>If you're split between levels, choose the lower one, for fairness.</li>
+      </ol>
+
+      <p>
+        Not sure, or want to work on the gaps? <a href="/coaching">Coaching</a> is the quickest way
+        to move up a level, and <a href="/sessions">our sessions</a> are a good place to find
+        players around your level.
+      </p>
+
+      <p class="credit">Adapted from Dink Pickleball.</p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 46rem; }
+  .note {
+    background: var(--sand);
+    border-left: 3px solid var(--coral);
+    padding: 0.7rem 1rem;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.95rem;
+  }
+  .download { margin: 1.5rem 0 0; }
+  .level {
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+  }
+  .level h2 { margin-top: 0; }
+  .lead { font-weight: 600; margin-bottom: 0.5rem; }
+  .checks { list-style: none; padding: 0; margin: 0.5rem 0 1rem; }
+  .checks li {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 0.45rem 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .checks li:last-child { border-bottom: none; }
+  .box {
+    flex: 0 0 auto;
+    width: 15px;
+    height: 15px;
+    margin-top: 0.3rem;
+    border: 1.5px solid var(--sea-dark);
+    border-radius: 3px;
+  }
+  .sum { font-weight: 600; color: var(--sea-dark); margin: 0; }
+  h2 { margin-top: 2.5rem; }
+  .table-scroll { overflow-x: auto; margin: 1rem 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.92rem; min-width: 34rem; }
+  th, td { padding: 0.6rem 0.7rem; border: 1px solid var(--line); text-align: center; }
+  th { background: var(--sea-dark); color: var(--paper); font-weight: 600; }
+  th.left, td.left { text-align: left; }
+  .steps { padding-left: 1.4rem; margin: 1rem 0; }
+  .steps li { padding: 0.25rem 0; }
+  .credit {
+    margin-top: 2.5rem;
+    color: var(--sea-light);
+    font-size: 0.85rem;
+    font-style: italic;
+  }
+</style>

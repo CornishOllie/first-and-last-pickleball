@@ -14,6 +14,7 @@ const links: NavLink[] = [
     label: 'Learn',
     children: [
       { href: '/rules', label: 'Pickleball in 5 minutes' },
+      { href: '/find-your-level', label: 'Find your level' },
       { href: '/code-of-conduct', label: 'Conduct & etiquette' },
     ],
   },
@@ -26,7 +27,10 @@ const links: NavLink[] = [
 const isActive = (href: string) =>
   href === '/' ? pathname === '/' : pathname.startsWith(href);
 
-const learnActive = pathname.startsWith('/rules') || pathname.startsWith('/code-of-conduct');
+const learnActive =
+  pathname.startsWith('/rules') ||
+  pathname.startsWith('/find-your-level') ||
+  pathname.startsWith('/code-of-conduct');
 ---
 
 <header class="site-header">
