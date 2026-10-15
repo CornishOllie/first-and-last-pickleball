@@ -35,6 +35,26 @@ export const outsideEvents: OutsideEvent[] = [
     url: 'https://www.tickettailor.com/events/torquaypickleballclub/2166864',
   },
   {
+    name: 'Bodmin Doubles Tournament',
+    start: '2026-10-30',
+    when: 'Friday 30 October, 6pm to 8pm',
+    venue: 'Bodmin Leisure Centre, Bodmin, PL31 1DE',
+    organiser: 'Bodmin Pickleball',
+    details:
+      "Any gender doubles for beginners, improvers and players rated up to DUPR 3.0 (or not rated). Round robin using Franklin X-40 balls. £10.50 per player. Enter yourself and tell them who your partner is. To enter, download the Spond app and use the code EBNJU, or email the club.",
+    email: 'bodmin.pickleball@gmail.com',
+  },
+  {
+    name: 'South Devon Pickleball Head UK Cup',
+    start: '2026-11-01',
+    when: 'Sunday 1 November',
+    venue: 'Ivybridge, Devon',
+    organiser: 'South Devon Pickleball',
+    details:
+      "Divisions from 2.0 up to 4.0, plus 50+ categories, so there is something for first-timers and experienced players alike. Alex Rowe is happy to help anyone entering to get ready beforehand.",
+    url: 'https://clubspark.net/ITCCommunitySportLtd/Coaching/Adult/PickleballTournaments',
+  },
+  {
     name: 'Penzance Doubles Tournament',
     start: '2026-11-15',
     when: 'Sunday 15 November, 9am to 2pm',
