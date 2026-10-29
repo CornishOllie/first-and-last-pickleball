@@ -94,6 +94,69 @@ export const local = {
   },
 };
 
+// ---------- backup and restore (this device) ----------
+
+const LAST = 'fl-play:last';
+export function rememberOpen(id: string | null, tab: string) {
+  if (id) write(LAST, { id, tab, at: Date.now() });
+  else {
+    try { localStorage.removeItem(LAST); } catch { /* ignore */ }
+  }
+}
+export function lastOpen(): { id: string; tab: string; at: number } | null {
+  return read<{ id: string; tab: string; at: number } | null>(LAST, null);
+}
+
+export interface Backup {
+  app: 'fl-play';
+  version: 1;
+  exportedAt: string;
+  sessions: Session[];
+  members: Member[];
+  ratings: PastRating[];
+}
+
+export function exportAll(): Backup {
+  const sessions = local.list().map((x) => local.load(x.id)).filter((x): x is Session => !!x);
+  return { app: 'fl-play', version: 1, exportedAt: new Date().toISOString(), sessions, members: local.members(), ratings: local.ratings() };
+}
+
+/** Merge a backup into this device. Sessions with the same id are replaced; nothing is deleted.
+ *  Members are matched by name so ratings from another phone join up with the right people. */
+export function importAll(raw: string): { sessions: number; members: number; ratings: number } {
+  const b = JSON.parse(raw) as Backup;
+  if (b.app !== 'fl-play' || !Array.isArray(b.sessions)) throw new Error('That file is not a play night backup.');
+  const have = local.members();
+  const byName = new Map(have.map((m) => [m.name.toLowerCase(), m]));
+  const merged = [...have];
+  const idMap = new Map<string, string>();
+  for (const m of b.members ?? []) {
+    if (!m?.name) continue;
+    const existing = byName.get(m.name.toLowerCase());
+    if (existing) idMap.set(m.id, existing.id);
+    else {
+      merged.push(m);
+      byName.set(m.name.toLowerCase(), m);
+      idMap.set(m.id, m.id);
+    }
+  }
+  write(K.members, merged);
+  const remap = (id: string | undefined) => (id ? idMap.get(id) ?? id : id);
+  let sessions = 0;
+  for (const s of b.sessions) {
+    if (!s || !s.id || !Array.isArray(s.players) || !Array.isArray(s.rounds)) continue;
+    local.save({ ...s, players: s.players.map((p) => ({ ...p, memberId: remap(p.memberId) })) });
+    sessions++;
+  }
+  const ratings = local.ratings();
+  const seen = new Set(ratings.map((r) => `${r.memberId}|${r.sessionId}`));
+  const add = (b.ratings ?? [])
+    .map((r) => ({ ...r, memberId: remap(r.memberId) as string }))
+    .filter((r) => r.memberId && !seen.has(`${r.memberId}|${r.sessionId}`));
+  write(K.ratings, [...ratings, ...add]);
+  return { sessions, members: (b.members ?? []).length, ratings: add.length };
+}
+
 // ---------- in the cloud ----------
 
 export const cloudEnabled = () => supabase !== null;

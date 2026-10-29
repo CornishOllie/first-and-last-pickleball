@@ -1,0 +1,16 @@
+{
+  "name": "Play night",
+  "short_name": "Play night",
+  "start_url": "/host",
+  "scope": "/host",
+  "display": "standalone",
+  "background_color": "#fbfaf6",
+  "theme_color": "#0e4f5b",
+  "icons": [
+    {
+      "src": "/img/logo.png",
+      "sizes": "any",
+      "type": "image/png"
+    }
+  ]
+}

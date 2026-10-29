@@ -16,6 +16,10 @@ export interface Player {
   joinedRound: number;
   /** Link to a saved club member, when picked from the member list. */
   memberId?: string;
+  /** On the Spond list but not checked in yet. Not drawn into rounds until they arrive. */
+  expected?: boolean;
+  /** Turned up without being on the Spond list. */
+  walkIn?: boolean;
 }
 
 export interface Match {
@@ -510,7 +514,7 @@ export const newId = () => `p${Date.now().toString(36)}${(counter++).toString(36
 export function addPlayer(
   s: Session,
   name: string,
-  extra: Partial<Pick<Player, 'gender' | 'level' | 'memberId'>> = {},
+  extra: Partial<Pick<Player, 'gender' | 'level' | 'memberId' | 'walkIn'>> = {},
 ): Session {
   const clean = name.trim();
   if (!clean) return s;
@@ -528,8 +532,106 @@ export function addPlayer(
     active: true,
     joinedRound: s.rounds.length + 1,
     memberId: extra.memberId,
+    walkIn: extra.walkIn || undefined,
   };
   return { ...s, players: [...s.players, p] };
+}
+
+export interface Incoming {
+  name: string;
+  gender?: Gender;
+  level?: number;
+  memberId?: string;
+}
+
+/** Add people from the Spond list as expected: they are not drawn until checked in. Names already here are left alone. */
+export function addExpected(s: Session, people: Incoming[]): Session {
+  let out = s;
+  for (const person of people) {
+    const clean = person.name.trim();
+    if (!clean) continue;
+    if (out.players.some((p) => p.name.toLowerCase() === clean.toLowerCase())) continue;
+    out = {
+      ...out,
+      players: [
+        ...out.players,
+        {
+          id: newId(),
+          name: clean,
+          gender: person.gender ?? '',
+          level: person.level ?? 0,
+          active: false,
+          expected: true,
+          joinedRound: out.rounds.length + 1,
+          memberId: person.memberId,
+        },
+      ],
+    };
+  }
+  return out;
+}
+
+export const expectedPlayers = (s: Session): Player[] => s.players.filter((p) => p.expected && !p.active);
+
+/** Someone on the list has arrived. They join from the next round. */
+export function checkIn(s: Session, id: string): Session {
+  return {
+    ...s,
+    players: s.players.map((p) => (p.id === id ? { ...p, active: true, expected: false, joinedRound: s.rounds.length + 1 } : p)),
+  };
+}
+
+export function checkInAll(s: Session): Session {
+  return expectedPlayers(s).reduce((acc, p) => checkIn(acc, p.id), s);
+}
+
+/** Someone on the list is not coming. They are dropped completely (they never played). */
+export function notComing(s: Session, id: string): Session {
+  return { ...s, players: s.players.filter((p) => !(p.id === id && p.expected && !p.active)) };
+}
+
+const SPOND_HEADINGS = /^(accepted|attending|going|yes|confirmed|coming|declined|not attending|not going|no|unanswered|no response|not responded|waiting list|waitlist|maybe|invited|unconfirmed|responses?)\b[\s:(\d)]*$/i;
+const SPOND_YES = /^(accepted|attending|going|yes|confirmed|coming)\b/i;
+
+/** Pull player names out of text copied from a Spond event page, a spreadsheet or a typed list.
+ *  If the text has headings (Accepted, Declined, Unanswered...), only the accepted section is used. */
+export function parseSpondList(text: string): string[] {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const hasHeadings = lines.some((l) => SPOND_HEADINGS.test(l));
+  let inYes = !hasHeadings;
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of lines) {
+    if (SPOND_HEADINGS.test(raw)) {
+      inYes = SPOND_YES.test(raw);
+      continue;
+    }
+    if (!inYes) continue;
+    // table row such as "Ann Smith<tab>Accepted": keep only accepted rows
+    const cols = raw.split('\t').map((c) => c.trim()).filter(Boolean);
+    let line = cols[0] ?? '';
+    if (cols.length > 1) {
+      const status = cols.slice(1).find((c) => SPOND_HEADINGS.test(c));
+      if (status && !SPOND_YES.test(status)) continue;
+    }
+    line = line
+      .replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/, '') // bullets, numbering
+      .replace(/\s*\(\d+\)\s*$/, '') // trailing count
+      .replace(/\p{Extended_Pictographic}/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!line) continue;
+    if (/@|^\d[\d\s:/.-]*$|^(show|see|view) (more|all)|^(guests?|message|messages|add|edit|share|remind)$/i.test(line)) continue;
+    // a line with several names separated by commas or semicolons
+    for (const piece of line.split(/\s*[;,]\s*/)) {
+      const name = piece.trim();
+      if (name && !seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
+        out.push(name);
+      }
+    }
+  }
+  return out;
 }
 
 export function removePlayer(s: Session, id: string): Session {

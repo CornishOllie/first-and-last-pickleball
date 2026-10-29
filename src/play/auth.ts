@@ -1,12 +1,14 @@
-// Sign-in for hosts. Uses Supabase email links (no passwords). If Supabase is not configured the tool
-// still works on this device, it just can not sync or share members and ratings.
+// Optional cloud sign-in for hosts (Supabase email links). Only active when PUBLIC_PLAY_CLOUD=on.
+// Without it the tool runs on this device only.
 import { createClient } from '@supabase/supabase-js';
 
 const url = import.meta.env.PUBLIC_SUPABASE_URL as string | undefined;
 const key = import.meta.env.PUBLIC_SUPABASE_ANON_KEY as string | undefined;
+// Cloud sign-in is optional and off by default. The tool normally runs on the device behind the door code.
+const cloudOn = import.meta.env.PUBLIC_PLAY_CLOUD === 'on';
 
 export const supabase =
-  url && key
+  cloudOn && url && key
     ? createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
     : null;
 

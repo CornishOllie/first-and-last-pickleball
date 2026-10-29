@@ -292,3 +292,69 @@ test('ratings can be set, noted and cleared', () => {
 test('needs at least four players', () => {
   assert.throws(() => nextRound(makeSession(3, 1)), /at least four/);
 });
+
+import { parseSpondList, addExpected, checkIn, checkInAll, notComing, expectedPlayers } from './engine.ts';
+
+test('parseSpondList: plain list, bullets, numbers, commas', () => {
+  assert.deepEqual(parseSpondList('1. Ann Smith\n- Bob Jones\nCat Lee, Dan Moss; Eve Ray'), ['Ann Smith', 'Bob Jones', 'Cat Lee', 'Dan Moss', 'Eve Ray']);
+});
+
+test('parseSpondList: takes only the accepted section when there are headings', () => {
+  const text = 'Accepted (3)\nAnn Smith\nBob Jones\nCat Lee\nDeclined (2)\nDan Moss\nEve Ray\nUnanswered (1)\nFay Hunt\nWaiting list\nGus Pike';
+  assert.deepEqual(parseSpondList(text), ['Ann Smith', 'Bob Jones', 'Cat Lee']);
+});
+
+test('parseSpondList: ignores emails, times, counts, emoji, repeats and menu words', () => {
+  const text = 'Attending 4\nAnn Smith 🎾\nbob@example.com\n19:00\nBob Jones (2)\nann smith\nShow more\nGuests\n12';
+  assert.deepEqual(parseSpondList(text), ['Ann Smith', 'Bob Jones']);
+});
+
+test('parseSpondList: table rows keep only accepted people', () => {
+  assert.deepEqual(parseSpondList('Ann Smith\tAccepted\nBob Jones\tDeclined\nCat Lee\tAttending'), ['Ann Smith', 'Cat Lee']);
+});
+
+test('parseSpondList: empty or junk gives nothing', () => {
+  assert.deepEqual(parseSpondList(''), []);
+  assert.deepEqual(parseSpondList('\n\n  \n'), []);
+});
+
+test('expected players are not drawn until checked in; late arrivals join and play', () => {
+  let s = newSession('x', 'Wed', '2026-10-28');
+  s.settings = { ...s.settings, courts: 3 };
+  s = addExpected(s, ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].map((n) => ({ name: n })));
+  assert.equal(activePlayers(s).length, 0);
+  assert.equal(expectedPlayers(s).length, 9);
+  assert.throws(() => nextRound(s), /at least four/);
+  // eight turn up, one is late, one is not coming
+  for (const p of expectedPlayers(s).filter((p) => !['H', 'I'].includes(p.name))) s = checkIn(s, p.id);
+  assert.equal(activePlayers(s).length, 7);
+  s = checkIn(s, s.players.find((p) => p.name === 'H')!.id);
+  s = notComing(s, s.players.find((p) => p.name === 'I')!.id);
+  assert.equal(s.players.find((p) => p.name === 'I'), undefined, 'no-show is dropped');
+  const r1 = nextRound(s, seededRng(1));
+  checkRoundInvariants(s, r1);
+  s = { ...s, rounds: [r1] };
+  s = addPlayer(s, 'Walker', { walkIn: true });
+  assert.ok(s.players.find((p) => p.name === 'Walker')!.walkIn);
+  const r2 = nextRound(s, seededRng(2));
+  checkRoundInvariants(s, r2);
+  assert.ok(r2.matches.flatMap((m) => [...m.a, ...m.b]).includes(s.players.find((p) => p.name === 'Walker')!.id), 'walk-in plays straight away');
+});
+
+test('checkInAll, and importing the same name twice does not duplicate', () => {
+  let s = newSession('x', 'Wed', '2026-10-28');
+  s = addExpected(s, [{ name: 'Ann' }, { name: 'Bob' }]);
+  s = addExpected(s, [{ name: 'ann' }, { name: 'Cat' }]);
+  assert.equal(s.players.length, 3);
+  s = checkInAll(s);
+  assert.equal(activePlayers(s).length, 3);
+  assert.equal(expectedPlayers(s).length, 0);
+  s = addExpected(s, [{ name: 'Bob' }]);
+  assert.equal(s.players.length, 3);
+});
+
+test('notComing never drops someone who is already here', () => {
+  let s = addPlayer(newSession('x', 'Wed', '2026-10-28'), 'Ann');
+  s = notComing(s, s.players[0].id);
+  assert.equal(s.players.length, 1);
+});

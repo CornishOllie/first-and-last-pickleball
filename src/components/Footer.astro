@@ -35,7 +35,7 @@ const year = new Date().getFullYear();
       </div>
     </div>
     <div class="legal">
-      <span>© {year} First &amp; Last Pickleball Club</span>
+      <span id="fl-door">© {year} First &amp; Last Pickleball Club</span>
       <span>·</span>
       <a href="/privacy">Privacy</a>
       <span>·</span>
@@ -76,3 +76,17 @@ const year = new Date().getFullYear();
     flex-wrap: wrap;
   }
 </style>
+
+<script>
+  // Five quick taps on the copyright line open the host tools.
+  const door = document.getElementById('fl-door');
+  let taps: number[] = [];
+  door?.addEventListener('click', () => {
+    const now = Date.now();
+    taps = [...taps.filter((t) => now - t < 3000), now];
+    if (taps.length >= 5) {
+      taps = [];
+      window.location.href = '/host';
+    }
+  });
+</script>
