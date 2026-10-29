@@ -1,0 +1,12 @@
+---
+import Base from '../../layouts/Base.astro';
+import App from '../../play/App.tsx';
+---
+
+<Base title="Play night" description="Host tool for club play nights." noindex>
+  <section>
+    <div class="container">
+      <App client:only="preact" />
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,679 @@
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import './play.css';
+import {
+  LEVELS, activePlayers, addPlayer, autoPair, canRedraw, leaderboard, newSession, nextRound, parseNames, playerById,
+  playerName, redrawLast, removePlayer, setRating, setScore, summaryText, unpairedPlayers, updatePlayer, pairsAreValid,
+} from './engine.ts';
+import type { Format, Gender, Match, Round, Session } from './engine.ts';
+import { cloud, cloudEnabled, local, latestByMember, markDirty, clearDirty, dirtyIds } from './backend.ts';
+import type { Member, PastRating, SessionSummary } from './backend.ts';
+import { currentHost, sendLoginLink, signOut } from './auth.ts';
+import { idleTimer, startGame, pause, resume, remaining, tick, skip, formatClock } from './timer.ts';
+import type { TimerState } from './timer.ts';
+import { beep, keepAwake, unlock } from './audio.ts';
+
+type Host = { email: string } | 'not-host' | null | 'loading';
+type Tab = 'play' | 'players' | 'table' | 'finish';
+type Sync = 'device' | 'saving' | 'synced' | 'offline';
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const weekday = () => new Date().toLocaleDateString('en-GB', { weekday: 'long' });
+
+// ---------- sign in ----------
+
+function Login({ notHost }: { notHost: boolean }) {
+  const [email, setEmail] = useState('');
+  const [msg, setMsg] = useState('');
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  return (
+    <div class="card">
+      <h2>Host sign-in</h2>
+      <p class="muted">This tool is for club hosts only. Enter your email and we will send you a sign-in link. No password needed.</p>
+      {notHost && (
+        <div class="error">
+          You are signed in, but this account is not on the host list. Ask the committee to add you.
+          <div style="margin-top:.5rem">
+            <button class="b small ghost" onClick={() => signOut().then(() => location.reload())}>Sign out</button>
+          </div>
+        </div>
+      )}
+      {sent ? (
+        <div class="note">Check your email for the sign-in link, then open it on this device.</div>
+      ) : (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            const err = await sendLoginLink(email);
+            setBusy(false);
+            if (err) setMsg(err);
+            else setSent(true);
+          }}
+        >
+          <div class="field">
+            <label for="em">Email</label>
+            <input id="em" type="email" required autoComplete="email" value={email} onInput={(e) => setEmail((e.target as HTMLInputElement).value)} />
+          </div>
+          {msg && <div class="error">{msg}</div>}
+          <button class="b" disabled={busy || !email}>{busy ? 'Sending...' : 'Send sign-in link'}</button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+// ---------- home ----------
+
+const FORMATS: { id: Format; title: string; text: string }[] = [
+  { id: 'mixer', title: 'Mixer', text: 'Partners and opponents change every round. Best for a social night.' },
+  { id: 'fixed', title: 'Fixed partners', text: 'Partners are drawn once, then pairs play different pairs each round.' },
+  { id: 'ladder', title: 'Ladder (up and down the river)', text: 'Winners move up a court, losers move down. Partners change each round.' },
+];
+
+function Home({ sessions, onOpen, onCreate, onDelete }: {
+  sessions: SessionSummary[];
+  onOpen: (id: string) => void;
+  onCreate: (s: Session) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [name, setName] = useState(`${weekday()} night`);
+  const [date, setDate] = useState(todayISO());
+  const [format, setFormat] = useState<Format>('mixer');
+  const [courts, setCourts] = useState(4);
+  const [game, setGame] = useState(12);
+  const [change, setChange] = useState(3);
+  const [mixed, setMixed] = useState(false);
+  const [balance, setBalance] = useState(false);
+  return (
+    <div>
+      <h2>New session</h2>
+      <form
+        class="card"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const s = newSession(crypto.randomUUID(), name.trim() || 'Play night', date);
+          s.settings = { format, courts, gameMinutes: game, changeoverMinutes: change, preferMixed: mixed, balanceLevels: balance };
+          onCreate(s);
+        }}
+      >
+        <div class="grid2">
+          <div class="field"><label for="n">Name</label><input id="n" type="text" value={name} onInput={(e) => setName((e.target as HTMLInputElement).value)} /></div>
+          <div class="field"><label for="d">Date</label><input id="d" type="date" value={date} onInput={(e) => setDate((e.target as HTMLInputElement).value)} /></div>
+        </div>
+        <div class="field">
+          <label>Format</label>
+          <div class="formats">
+            {FORMATS.map((f) => (
+              <div class={`fmt ${format === f.id ? 'on' : ''}`} onClick={() => setFormat(f.id)}>
+                <strong>{f.title}</strong>
+                <span class="muted">{f.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label for="c">Courts</label><input id="c" type="number" min={1} max={12} value={courts} onInput={(e) => setCourts(Math.max(1, Number((e.target as HTMLInputElement).value) || 1))} /></div>
+          <div class="field"><label for="g">Game (minutes)</label><input id="g" type="number" min={1} max={60} value={game} onInput={(e) => setGame(Math.max(1, Number((e.target as HTMLInputElement).value) || 1))} /></div>
+          <div class="field"><label for="ch">Changeover (minutes)</label><input id="ch" type="number" min={0} max={20} value={change} onInput={(e) => setChange(Math.max(0, Number((e.target as HTMLInputElement).value) || 0))} /></div>
+        </div>
+        <label class="check"><input type="checkbox" checked={mixed} onChange={(e) => setMixed((e.target as HTMLInputElement).checked)} /><span>Pair a man with a woman where possible<br /><span class="muted">Set each player's M or F on the Players tab.</span></span></label>
+        <label class="check"><input type="checkbox" checked={balance} onChange={(e) => setBalance((e.target as HTMLInputElement).checked)} /><span>Balance teams by level<br /><span class="muted">Uses the level you set for each player, so matches are even.</span></span></label>
+        <button class="b">Start session</button>
+      </form>
+
+      <h2>Earlier sessions</h2>
+      {sessions.length === 0 && <p class="muted">Nothing yet.</p>}
+      {sessions.map((s) => (
+        <div class="card spread" key={s.id}>
+          <div><strong>{s.name}</strong><br /><span class="muted">{s.date}{s.ended ? ' - finished' : ' - in progress'}</span></div>
+          <div class="row">
+            <button class="b small" onClick={() => onOpen(s.id)}>Open</button>
+            <button class="b small danger" onClick={() => confirm(`Delete "${s.name}"? This can not be undone.`) && onDelete(s.id)}>Delete</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------- timer ----------
+
+function useTimer(session: Session) {
+  const key = `fl-play:timer:${session.id}`;
+  const [state, setState] = useState<TimerState>(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as TimerState) : idleTimer();
+    } catch {
+      return idleTimer();
+    }
+  });
+  const [now, setNow] = useState(Date.now());
+  const ref = useRef(state);
+  const warned = useRef(false);
+  const settings = { gameMinutes: session.settings.gameMinutes, changeoverMinutes: session.settings.changeoverMinutes };
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
+  const put = (next: TimerState) => {
+    ref.current = next;
+    setState(next);
+    try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      const cur = ref.current;
+      const r = tick(cur, settingsRef.current, t);
+      if (r.event === 'game-over') beep(3, 660);
+      if (r.event === 'change-over') { beep(2, 990); void keepAwake(false); }
+      if (r.state.phase !== cur.phase) warned.current = false;
+      if (!warned.current && r.state.running && r.state.phase === 'game' && remaining(r.state, t) <= 60_000 && settingsRef.current.gameMinutes > 2) {
+        warned.current = true;
+        beep(1, 1200);
+      }
+      if (r.state !== cur) put(r.state);
+    }, 250);
+    return () => clearInterval(id);
+  }, []);
+
+  return {
+    state, now, left: remaining(state, now),
+    start: () => { unlock(); void keepAwake(true); warned.current = false; put(startGame(settingsRef.current, Date.now())); },
+    pause: () => put(pause(ref.current, Date.now())),
+    resume: () => { unlock(); put(resume(ref.current, Date.now())); },
+    skip: () => put(skip(ref.current, settingsRef.current, Date.now())),
+    reset: () => { void keepAwake(false); put(idleTimer()); },
+  };
+}
+
+type TimerApi = ReturnType<typeof useTimer>;
+
+const phaseLabel = (t: TimerApi) =>
+  t.state.phase === 'game' ? 'Game' : t.state.phase === 'change' ? 'Changeover' : t.state.phase === 'ready' ? 'Ready for the next round' : 'Timer';
+
+function TimerPanel({ t, onPresent }: { t: TimerApi; onPresent: () => void }) {
+  const { state } = t;
+  const cls = `timer ${state.phase === 'change' ? 'change' : state.phase === 'ready' ? 'ready' : ''} ${state.phase === 'game' && t.left <= 60_000 && t.left > 0 ? 'low' : ''}`;
+  return (
+    <div class={cls}>
+      <div class="phase">{phaseLabel(t)}</div>
+      <div class="clock">{state.phase === 'idle' || state.phase === 'ready' ? '--:--' : formatClock(t.left)}</div>
+      <div class="row" style="justify-content:center">
+        {(state.phase === 'idle' || state.phase === 'ready') && <button class="b" onClick={t.start}>Start game</button>}
+        {(state.phase === 'game' || state.phase === 'change') && state.running && <button class="b" onClick={t.pause}>Pause</button>}
+        {(state.phase === 'game' || state.phase === 'change') && !state.running && <button class="b" onClick={t.resume}>Resume</button>}
+        {(state.phase === 'game' || state.phase === 'change') && <button class="b ghost" onClick={t.skip}>Skip</button>}
+        {state.phase !== 'idle' && <button class="b ghost" onClick={t.reset}>Reset</button>}
+        <button class="b ghost" onClick={onPresent}>Big screen</button>
+      </div>
+    </div>
+  );
+}
+
+function Present({ session, round, t, onClose }: { session: Session; round: Round | undefined; t: TimerApi; onClose: () => void }) {
+  const names = (ids: string[]) => ids.map((id) => playerName(session, id)).join(' & ');
+  return (
+    <div class="present">
+      <button class="b ghost x" onClick={onClose}>Close</button>
+      <div class="ph">{round ? `Round ${round.number}` : 'Round'} &middot; {phaseLabel(t)}</div>
+      <div class={`big ${t.state.phase === 'change' ? 'change' : t.state.phase === 'ready' ? 'ready' : ''}`}>
+        {t.state.phase === 'idle' || t.state.phase === 'ready' ? (t.state.phase === 'ready' ? 'Next!' : '--:--') : formatClock(t.left)}
+      </div>
+      {round && (
+        <div class="courts">
+          {round.matches.map((m) => (
+            <div class="pc"><b>Court {m.court}</b><br />{names(m.a)}<br /><span class="muted">v</span><br />{names(m.b)}</div>
+          ))}
+          {round.sitting.length > 0 && <div class="pc"><b>Sitting out</b><br />{names(round.sitting)}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- play tab ----------
+
+function ScoreRow({ session, round, m, onScore }: { session: Session; round: Round; m: Match; onScore: (court: number, a: number | null, b: number | null) => void }) {
+  const names = (ids: string[]) => ids.map((id) => playerName(session, id)).join(' & ');
+  const num = (v: string): number | null => (v === '' ? null : Math.max(0, Math.floor(Number(v))));
+  const aWin = m.scoreA !== null && m.scoreB !== null && m.scoreA > m.scoreB;
+  const bWin = m.scoreA !== null && m.scoreB !== null && m.scoreB > m.scoreA;
+  return (
+    <div class="match">
+      <div class="court"><small>Court</small>{m.court}</div>
+      <div>
+        <div class={`side ${aWin ? 'win' : ''}`}>
+          <div class="names">{names(m.a)}</div>
+          <input type="number" inputMode="numeric" min={0} aria-label={`Score for ${names(m.a)}`} value={m.scoreA ?? ''}
+            onInput={(e) => onScore(m.court, num((e.target as HTMLInputElement).value), m.scoreB)} />
+        </div>
+        <div class="vs">versus</div>
+        <div class={`side ${bWin ? 'win' : ''}`}>
+          <div class="names">{names(m.b)}</div>
+          <input type="number" inputMode="numeric" min={0} aria-label={`Score for ${names(m.b)}`} value={m.scoreB ?? ''}
+            onInput={(e) => onScore(m.court, m.scoreA, num((e.target as HTMLInputElement).value))} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RoundCard({ session, round, onScore, title }: { session: Session; round: Round; onScore: (rn: number, court: number, a: number | null, b: number | null) => void; title?: string }) {
+  return (
+    <div class="card">
+      <h3>{title ?? `Round ${round.number}`}</h3>
+      {round.matches.map((m) => <ScoreRow key={m.court} session={session} round={round} m={m} onScore={(c, a, b) => onScore(round.number, c, a, b)} />)}
+      {round.sitting.length > 0 && (
+        <p class="muted" style="margin:.7rem 0 0">Sitting out: {round.sitting.map((id) => playerName(session, id)).join(', ')}</p>
+      )}
+    </div>
+  );
+}
+
+function PlayTab({ session, update, t, onPresent }: { session: Session; update: (f: (s: Session) => Session) => void; t: TimerApi; onPresent: () => void }) {
+  const [error, setError] = useState('');
+  const active = activePlayers(session);
+  const last = session.rounds[session.rounds.length - 1];
+  const fixed = session.settings.format === 'fixed';
+  const pairs = pairsAreValid(session);
+  const loose = unpairedPlayers(session);
+
+  const draw = () => {
+    setError('');
+    try {
+      const r = nextRound(session);
+      update((s) => ({ ...s, rounds: [...s.rounds, r] }));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  const redraw = () => {
+    setError('');
+    try {
+      const r = redrawLast(session);
+      update((s) => ({ ...s, rounds: [...s.rounds.slice(0, -1), r] }));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  const onScore = (rn: number, court: number, a: number | null, b: number | null) => update((s) => setScore(s, rn, court, a, b));
+
+  return (
+    <div>
+      <TimerPanel t={t} onPresent={onPresent} />
+
+      {active.length < 4 && <div class="note">Add at least four players on the Players tab to start.</div>}
+
+      {fixed && (
+        <div class="card soft">
+          <h3>Pairs</h3>
+          {pairs.length === 0 && <p class="muted">No pairs yet.</p>}
+          <div class="chips">
+            {pairs.map(([x, y]) => <span class="chip">{playerName(session, x)} &amp; {playerName(session, y)}</span>)}
+          </div>
+          {loose.length > 0 && <p class="muted" style="margin:.6rem 0 0">Without a partner: {loose.map((p) => p.name).join(', ')}</p>}
+          <div class="row" style="margin-top:.7rem">
+            <button class="b small" disabled={loose.length < 2} onClick={() => update((s) => ({ ...s, pairs: autoPair(s) }))}>Draw partners</button>
+            <button class="b small ghost" disabled={pairs.length === 0} onClick={() => confirm('Break up all pairs and draw again?') && update((s) => ({ ...s, pairs: autoPair({ ...s, pairs: [] }) }))}>Redraw all pairs</button>
+          </div>
+        </div>
+      )}
+
+      <div class="row" style="margin:1rem 0">
+        <button class="b" disabled={active.length < 4} onClick={draw}>{session.rounds.length === 0 ? 'Draw round 1' : `Draw round ${session.rounds.length + 1}`}</button>
+        {canRedraw(session) && <button class="b ghost" onClick={redraw}>Redraw this round</button>}
+      </div>
+      {error && <div class="error">{error}</div>}
+
+      {last && <RoundCard session={session} round={last} onScore={onScore} title={`Round ${last.number} (now)`} />}
+      {session.rounds.length > 1 && (
+        <details>
+          <summary class="muted" style="cursor:pointer;margin:.6rem 0">Earlier rounds ({session.rounds.length - 1})</summary>
+          {session.rounds.slice(0, -1).reverse().map((r) => <RoundCard key={r.number} session={session} round={r} onScore={onScore} />)}
+        </details>
+      )}
+    </div>
+  );
+}
+
+// ---------- players tab ----------
+
+function PlayersTab({ session, update, members, past }: {
+  session: Session;
+  update: (f: (s: Session) => Session) => void;
+  members: Member[];
+  past: Record<string, PastRating>;
+}) {
+  const [name, setName] = useState('');
+  const [gender, setGender] = useState<Gender>('');
+  const [bulk, setBulk] = useState('');
+  const active = activePlayers(session);
+  const gone = session.players.filter((p) => !p.active);
+
+  const addOne = (raw: string, g: Gender) => {
+    const member = members.find((m) => m.name.toLowerCase() === raw.trim().toLowerCase());
+    const lvl = member ? past[member.id]?.level ?? 0 : 0;
+    update((s) => addPlayer(s, raw, { gender: member?.gender || g, level: lvl, memberId: member?.id }));
+  };
+
+  return (
+    <div>
+      <h2>Add a player</h2>
+      <form class="card row" onSubmit={(e) => { e.preventDefault(); if (name.trim()) { addOne(name, gender); setName(''); } }}>
+        <input type="text" list="members" placeholder="Name" value={name} onInput={(e) => setName((e.target as HTMLInputElement).value)} style="flex:1;min-width:10rem" />
+        <datalist id="members">{members.map((m) => <option value={m.name} />)}</datalist>
+        <select value={gender} onChange={(e) => setGender((e.target as HTMLSelectElement).value as Gender)} aria-label="Gender">
+          <option value="">M/F (optional)</option><option value="M">M</option><option value="F">F</option>
+        </select>
+        <button class="b" disabled={!name.trim()}>Add</button>
+      </form>
+
+      <details class="card">
+        <summary style="cursor:pointer;font-weight:600">Paste a list (for example from Spond)</summary>
+        <div class="field">
+          <textarea placeholder={'One name per line, or separated by commas.\nNumbers and bullets are ignored.'} value={bulk} onInput={(e) => setBulk((e.target as HTMLTextAreaElement).value)} />
+        </div>
+        <button class="b small" disabled={!parseNames(bulk).length} onClick={() => { parseNames(bulk).forEach((n) => addOne(n, '')); setBulk(''); }}>
+          Add {parseNames(bulk).length || ''} players
+        </button>
+      </details>
+
+      <h2>Here tonight ({active.length})</h2>
+      {active.length === 0 && <p class="muted">Nobody yet.</p>}
+      <ul class="plist card">
+        {active.map((p) => (
+          <li key={p.id}>
+            <strong>{p.name}</strong>
+            <select aria-label={`Gender for ${p.name}`} value={p.gender} onChange={(e) => update((s) => updatePlayer(s, p.id, { gender: (e.target as HTMLSelectElement).value as Gender }))}>
+              <option value="">-</option><option value="M">M</option><option value="F">F</option>
+            </select>
+            <select aria-label={`Level for ${p.name}`} value={p.level} onChange={(e) => update((s) => updatePlayer(s, p.id, { level: Number((e.target as HTMLSelectElement).value) }))}>
+              {LEVELS.map((l, i) => <option value={i}>{i === 0 ? 'Level?' : l}</option>)}
+            </select>
+            <button class="b small danger" onClick={() => update((s) => removePlayer(s, p.id))}>Remove</button>
+          </li>
+        ))}
+      </ul>
+      <p class="muted">Changes apply from the next round. If you change someone before scores are in, use "Redraw this round" on the Play tab.</p>
+
+      {gone.length > 0 && (
+        <div>
+          <h2>Left or removed</h2>
+          <div class="chips">
+            {gone.map((p) => <button class="chip" style="border:0;cursor:pointer" onClick={() => update((s) => addPlayer(s, p.name))}>{p.name} (bring back)</button>)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- table tab ----------
+
+function TableTab({ session }: { session: Session }) {
+  const rows = leaderboard(session);
+  return (
+    <div>
+      <h2>Table</h2>
+      {rows.length === 0 ? <p class="muted">Scores will appear here.</p> : (
+        <div class="card" style="overflow-x:auto">
+          <table>
+            <thead><tr><th>#</th><th class="l">Player</th><th>P</th><th>W</th><th>L</th><th>For</th><th>Agst</th><th>+/-</th><th>Sat</th></tr></thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={r.id}>
+                  <td>{i + 1}</td><td class="l"><strong>{r.name}</strong></td><td>{r.played}</td><td>{r.won}</td><td>{r.lost}</td>
+                  <td>{r.pointsFor}</td><td>{r.pointsAgainst}</td><td>{r.diff > 0 ? `+${r.diff}` : r.diff}</td><td>{r.sat}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p class="muted">Ranked on wins, then points difference, then points scored.</p>
+    </div>
+  );
+}
+
+// ---------- finish tab ----------
+
+function FinishTab({ session, update, past, onEnd, cloudOn }: {
+  session: Session;
+  update: (f: (s: Session) => Session) => void;
+  past: Record<string, PastRating>;
+  onEnd: () => Promise<string | null>;
+  cloudOn: boolean;
+}) {
+  const [msg, setMsg] = useState('');
+  const [copied, setCopied] = useState(false);
+  const rows = leaderboard(session);
+  const people = session.players.filter((p) => p.active || rows.find((r) => r.id === p.id && r.played > 0));
+  const text = summaryText(session);
+  return (
+    <div>
+      <h2>Rate the players</h2>
+      <p class="muted">Optional. Give each player a level and a note. These are kept for hosts and shown next time that player joins in. Nothing here is shared with players.</p>
+      <div class="card">
+        {people.map((p) => {
+          const r = session.ratings[p.id];
+          const prev = p.memberId ? past[p.memberId] : undefined;
+          return (
+            <div class="rate" key={p.id}>
+              <div class="top">
+                <strong>{p.name}</strong>
+                <select aria-label={`Rating for ${p.name}`} value={r?.level ?? 0} onChange={(e) => update((s) => setRating(s, p.id, Number((e.target as HTMLSelectElement).value), s.ratings[p.id]?.note ?? ''))}>
+                  {LEVELS.map((l, i) => <option value={i}>{l}</option>)}
+                </select>
+              </div>
+              {prev && <span class="muted">Last time: {LEVELS[prev.level]} ({prev.at.slice(0, 10)}){prev.note ? ` - ${prev.note}` : ''}</span>}
+              <input type="text" placeholder="Note (optional)" value={r?.note ?? ''} onInput={(e) => update((s) => setRating(s, p.id, s.ratings[p.id]?.level ?? 0, (e.target as HTMLInputElement).value))} />
+            </div>
+          );
+        })}
+      </div>
+
+      <h2>Share the results</h2>
+      <div class="card">
+        <pre style="white-space:pre-wrap;margin:0 0 .7rem;font-family:inherit">{text}</pre>
+        <button class="b small ghost" onClick={async () => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }}>
+          {copied ? 'Copied' : 'Copy to paste into Spond or WhatsApp'}
+        </button>
+      </div>
+
+      <h2>Finish</h2>
+      {!cloudOn && <div class="note">Ratings are saved on this device only until sign-in is set up.</div>}
+      {msg && <div class={msg === 'Saved.' ? 'note' : 'error'}>{msg}</div>}
+      <button class="b" onClick={async () => { const e = await onEnd(); setMsg(e ?? 'Saved.'); }}>{session.ended ? 'Save again' : 'End session and save ratings'}</button>
+    </div>
+  );
+}
+
+// ---------- shell ----------
+
+const syncText: Record<Sync, string> = {
+  device: 'Saved on this device',
+  saving: 'Saving...',
+  synced: 'Saved and synced',
+  offline: 'Offline. Saved here, will sync when back online',
+};
+
+function SessionScreen({ session, update, tab, setTab, members, past, pastRows, onEnd, cloudOn, presenting, setPresenting }: {
+  session: Session;
+  update: (f: (s: Session) => Session) => void;
+  tab: Tab;
+  setTab: (t: Tab) => void;
+  members: Member[];
+  past: Record<string, PastRating>;
+  pastRows: PastRating[];
+  onEnd: () => Promise<string | null>;
+  cloudOn: boolean;
+  presenting: boolean;
+  setPresenting: (b: boolean) => void;
+}) {
+  const timer = useTimer(session);
+  return (
+    <>
+      <div class="tabs" role="tablist">
+        {(['play', 'players', 'table', 'finish'] as Tab[]).map((k) => (
+          <button class={`tab ${tab === k ? 'on' : ''}`} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>
+            {k === 'play' ? 'Play' : k === 'players' ? `Players (${activePlayers(session).length})` : k === 'table' ? 'Table' : 'Finish'}
+          </button>
+        ))}
+      </div>
+      {tab === 'play' && <PlayTab session={session} update={update} t={timer} onPresent={() => setPresenting(true)} />}
+      {tab === 'players' && <PlayersTab session={session} update={update} members={members} past={past} />}
+      {tab === 'table' && <TableTab session={session} />}
+      {tab === 'finish' && <FinishTab session={session} update={update} past={latestByMember(pastRows.filter((r) => r.sessionId !== session.id))} onEnd={onEnd} cloudOn={cloudOn} />}
+      {presenting && <Present session={session} round={session.rounds[session.rounds.length - 1]} t={timer} onClose={() => setPresenting(false)} />}
+    </>
+  );
+}
+
+export default function App() {
+  const cloudOn = cloudEnabled();
+  const [host, setHost] = useState<Host>(cloudOn ? 'loading' : null);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [session, setSession] = useState<Session | null>(null);
+  const [tab, setTab] = useState<Tab>('play');
+  const [sync, setSync] = useState<Sync>('device');
+  const [members, setMembers] = useState<Member[]>([]);
+  const [pastRows, setPastRows] = useState<PastRating[]>([]);
+  const past = useMemo(() => latestByMember(pastRows), [pastRows]);
+  const [presenting, setPresenting] = useState(false);
+  const [loadErr, setLoadErr] = useState('');
+  const timerTimeout = useRef<number | undefined>(undefined);
+  const first = useRef(true);
+
+  const signedIn = !cloudOn || (host !== 'loading' && host !== null && host !== 'not-host');
+
+  useEffect(() => { if (cloudOn) currentHost().then(setHost); }, []);
+
+  const refreshLists = async () => {
+    let list: SessionSummary[] = local.list();
+    let mem: Member[] = local.members();
+    let ratings: PastRating[] = local.ratings();
+    if (cloudOn) {
+      try {
+        const [cl, cm, cr] = await Promise.all([cloud.list(), cloud.members(), cloud.ratings()]);
+        const ids = new Set(cl.map((x) => x.id));
+        list = [...cl, ...list.filter((x) => !ids.has(x.id))];
+        mem = cm;
+        ratings = [...cr, ...ratings];
+      } catch (e) {
+        setLoadErr('Could not reach the server. Showing what is saved on this device.');
+      }
+    }
+    setSessions(list);
+    setMembers(mem);
+    setPastRows(ratings);
+  };
+
+  useEffect(() => { if (signedIn) void refreshLists(); }, [signedIn]);
+
+  // push anything that failed to sync earlier
+  const flush = async () => {
+    if (!cloudOn) return;
+    for (const id of dirtyIds()) {
+      const s = local.load(id);
+      if (!s) { clearDirty(id); continue; }
+      try { await cloud.save(s); clearDirty(id); } catch { /* try again later */ }
+    }
+  };
+  useEffect(() => {
+    window.addEventListener('online', flush);
+    return () => window.removeEventListener('online', flush);
+  }, []);
+
+  const update = (f: (s: Session) => Session) => setSession((cur) => (cur ? f(cur) : cur));
+
+  // autosave: device straight away, cloud a moment later
+  useEffect(() => {
+    if (!session) return;
+    if (first.current) { first.current = false; return; }
+    local.save(session);
+    if (!cloudOn) { setSync('device'); return; }
+    setSync('saving');
+    markDirty(session.id);
+    window.clearTimeout(timerTimeout.current);
+    timerTimeout.current = window.setTimeout(async () => {
+      try {
+        await cloud.save(session);
+        clearDirty(session.id);
+        setSync('synced');
+      } catch {
+        setSync('offline');
+      }
+    }, 1200);
+  }, [session]);
+
+  const open = async (id: string) => {
+    let s: Session | null = local.load(id);
+    if (cloudOn && !dirtyIds().includes(id)) {
+      try { s = (await cloud.load(id)) ?? s; } catch { /* use device copy */ }
+    }
+    if (s) { first.current = true; setSession(s); setTab('play'); setSync(cloudOn ? 'synced' : 'device'); }
+  };
+  const create = (s: Session) => { first.current = false; local.save(s); setSession(s); setTab('play'); setSync('saving'); };
+  const remove = async (id: string) => {
+    local.remove(id);
+    if (cloudOn) { try { await cloud.remove(id); } catch { /* ignore */ } }
+    void refreshLists();
+  };
+
+    const endSession = async (): Promise<string | null> => {
+    if (!session) return null;
+    try {
+      let s = session;
+      const rated = s.players.filter((p) => s.ratings[p.id] && s.ratings[p.id].level > 0);
+      // make sure every rated player is a saved member so the rating is remembered next time
+      const rows: { memberId: string; sessionId: string; level: number; note: string }[] = [];
+      for (const p of rated) {
+        const m = cloudOn ? await cloud.ensureMember(p.name, p.gender) : local.ensureMember(p.name, p.gender);
+        if (!p.memberId) s = { ...s, players: s.players.map((x) => (x.id === p.id ? { ...x, memberId: m.id } : x)) };
+        rows.push({ memberId: m.id, sessionId: s.id, level: s.ratings[p.id].level, note: s.ratings[p.id].note });
+      }
+      s = { ...s, ended: true };
+      setSession(s);
+      local.save(s);
+      local.saveRatings(rows.map((r) => ({ memberId: r.memberId, level: r.level, note: r.note, at: new Date().toISOString(), sessionName: s.name, sessionId: s.id })));
+      if (cloudOn) { await cloud.save(s); await cloud.saveRatings(rows); clearDirty(s.id); setSync('synced'); }
+      void refreshLists();
+      return null;
+    } catch (e) {
+      return `Could not save: ${(e as Error).message}`;
+    }
+  };
+
+  if (host === 'loading') return <div class="play"><p class="muted">Loading...</p></div>;
+  if (cloudOn && !signedIn) return <div class="play"><h1>Play night</h1><Login notHost={host === 'not-host'} /></div>;
+
+  return (
+    <div class="play">
+      <div class="spread">
+        <div>
+          <h1>{session ? session.name : 'Play night'}</h1>
+          <span class="muted">{session ? `${session.date} - ${syncText[sync]}` : cloudOn ? 'Signed in' : 'Working on this device only'}</span>
+        </div>
+        <div class="row">
+          {session && <button class="b small ghost" onClick={() => { setSession(null); first.current = true; void refreshLists(); }}>All sessions</button>}
+          {cloudOn && <button class="b small ghost" onClick={() => signOut().then(() => location.reload())}>Sign out</button>}
+        </div>
+      </div>
+      {!cloudOn && <div class="note">Sign-in is not set up yet, so everything is kept on this device only.</div>}
+      {loadErr && <div class="error">{loadErr}</div>}
+
+      {!session && <Home sessions={sessions} onOpen={open} onCreate={create} onDelete={remove} />}
+
+      {session && (
+        <SessionScreen
+          session={session} update={update} tab={tab} setTab={setTab} members={members} past={past} pastRows={pastRows}
+          onEnd={endSession} cloudOn={cloudOn} presenting={presenting} setPresenting={setPresenting}
+        />
+      )}
+    </div>
+  );
+}
