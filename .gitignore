@@ -20,3 +20,6 @@ pnpm-debug.log*
 
 # astro
 .astro/
+supabase/.temp/
+.vercel
+.env*

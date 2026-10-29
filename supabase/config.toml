@@ -1,0 +1,24 @@
+# Only the settings we manage. Pushed with: supabase config push
+project_id = "first-and-last-play"
+
+[auth]
+enabled = true
+site_url = "https://www.firstandlastpickleball.co.uk/host"
+additional_redirect_urls = [
+  "https://www.firstandlastpickleball.co.uk/host",
+  "https://firstandlastpickleball.co.uk/host",
+  "http://localhost:4321/host",
+  "http://localhost:4399/host",
+]
+# Hosts are added by invitation only. Nobody can create their own account.
+enable_signup = false
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+
+[auth.email]
+# The email provider must stay ON so hosts can sign in. New accounts are blocked by the
+# global enable_signup = false above, so only invited hosts can ever get in.
+enable_signup = true
+enable_confirmations = true
+otp_length = 6
+otp_expiry = 3600
