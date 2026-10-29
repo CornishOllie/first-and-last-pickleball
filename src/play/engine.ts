@@ -20,6 +20,8 @@ export interface Player {
   expected?: boolean;
   /** Turned up without being on the Spond list. */
   walkIn?: boolean;
+  /** The name as it came from Spond, kept when the host corrects the spelling, so fetching the list again does not add a duplicate. */
+  source?: string;
 }
 
 export interface Match {
@@ -539,6 +541,8 @@ export function addPlayer(
 
 export interface Incoming {
   name: string;
+  /** The name as Spond has it, if the host corrected the spelling. */
+  source?: string;
   gender?: Gender;
   level?: number;
   memberId?: string;
@@ -550,7 +554,7 @@ export function addExpected(s: Session, people: Incoming[]): Session {
   for (const person of people) {
     const clean = person.name.trim();
     if (!clean) continue;
-    if (out.players.some((p) => p.name.toLowerCase() === clean.toLowerCase())) continue;
+    if (hasPlayer(out, clean) || (person.source && hasPlayer(out, person.source))) continue;
     out = {
       ...out,
       players: [
@@ -564,11 +568,18 @@ export function addExpected(s: Session, people: Incoming[]): Session {
           expected: true,
           joinedRound: out.rounds.length + 1,
           memberId: person.memberId,
+          source: (person.source ?? clean).trim(),
         },
       ],
     };
   }
   return out;
+}
+
+/** Is this person already in the session, under their Spond name or a corrected one? */
+export function hasPlayer(s: Session, name: string): boolean {
+  const n = name.trim().toLowerCase();
+  return s.players.some((p) => p.name.toLowerCase() === n || p.source?.toLowerCase() === n);
 }
 
 export const expectedPlayers = (s: Session): Player[] => s.players.filter((p) => p.expected && !p.active);
@@ -648,6 +659,20 @@ export function parseNames(text: string): string[] {
     .split(/[\n,;]+/)
     .map((x) => x.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim())
     .filter(Boolean);
+}
+
+// ---------- people coming from Spond ----------
+
+export interface Candidate {
+  name: string;
+  /** yes = accepted, waiting = on the waiting list, unknown = from a plain list with no answers. */
+  status: 'yes' | 'waiting' | 'unknown';
+}
+
+/** Candidates from pasted text: only accepted people if it has headings, otherwise everyone listed. */
+export function candidatesFromText(text: string): Candidate[] {
+  const hasHeadings = text.split(/\r?\n/).some((l) => SPOND_HEADINGS.test(l.trim()));
+  return parseSpondList(text).map((name) => ({ name, status: hasHeadings ? 'yes' : 'unknown' }));
 }
 
 // ---------- scoring ----------

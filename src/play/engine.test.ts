@@ -358,3 +358,28 @@ test('notComing never drops someone who is already here', () => {
   s = notComing(s, s.players[0].id);
   assert.equal(s.players.length, 1);
 });
+
+import { candidatesFromText } from './engine.ts';
+
+test('candidatesFromText marks accepted when the paste has headings', () => {
+  assert.deepEqual(candidatesFromText('Accepted (2)\nAnn\nBob\nDeclined\nCat'), [{ name: 'Ann', status: 'yes' }, { name: 'Bob', status: 'yes' }]);
+  assert.deepEqual(candidatesFromText('Ann\nBob'), [{ name: 'Ann', status: 'unknown' }, { name: 'Bob', status: 'unknown' }]);
+});
+
+test('fetching the Spond list again does not duplicate someone whose name was corrected', () => {
+  let s = newSession('x', 'Wed', '2026-10-28');
+  s = addExpected(s, [{ name: 'Eve Ray' }, { name: 'Ann' }]);
+  const eve = s.players.find((p) => p.name === 'Eve Ray')!;
+  s = updatePlayer(s, eve.id, { name: 'Evie Ray' });
+  s = checkIn(s, eve.id);
+  s = addExpected(s, [{ name: 'Eve Ray' }, { name: 'Ann' }, { name: 'Late Larry' }]);
+  assert.deepEqual(s.players.map((p) => p.name).sort(), ['Ann', 'Evie Ray', 'Late Larry']);
+});
+
+test('a name corrected in the preview keeps its Spond spelling for next time', () => {
+  let s = newSession('x', 'Wed', '2026-10-28');
+  s = addExpected(s, [{ name: 'Evie Ray', source: 'Eve Ray' }]);
+  s = addExpected(s, [{ name: 'Eve Ray' }]);
+  assert.equal(s.players.length, 1);
+  assert.equal(s.players[0].name, 'Evie Ray');
+});

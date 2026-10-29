@@ -23,7 +23,10 @@ export function unlock() {
 }
 
 export function lock() {
-  try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+  try {
+    localStorage.removeItem(KEY);
+    localStorage.removeItem('fl-play:listcode');
+  } catch { /* ignore */ }
 }
 
 export function isUnlocked(now = Date.now()): boolean {

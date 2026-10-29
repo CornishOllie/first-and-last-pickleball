@@ -3,7 +3,7 @@ import './play.css';
 import {
   LEVELS, activePlayers, addPlayer, autoPair, canRedraw, leaderboard, newSession, nextRound, parseNames, playerById,
   playerName, redrawLast, removePlayer, setRating, setScore, summaryText, unpairedPlayers, updatePlayer, pairsAreValid,
-  addExpected, checkIn, checkInAll, expectedPlayers, notComing, parseSpondList,
+  addExpected, checkIn, checkInAll, expectedPlayers, notComing, candidatesFromText, hasPlayer,
 } from './engine.ts';
 import type { Format, Gender, Match, Round, Session } from './engine.ts';
 import { cloud, cloudEnabled, local, latestByMember, markDirty, clearDirty, dirtyIds, exportAll, importAll, rememberOpen, lastOpen } from './backend.ts';
@@ -12,6 +12,8 @@ import { currentHost, sendLoginLink, signOut } from './auth.ts';
 import { idleTimer, startGame, pause, resume, remaining, tick, skip, formatClock } from './timer.ts';
 import type { TimerState } from './timer.ts';
 import { beep, keepAwake, unlock } from './audio.ts';
+import { fetchSpondEvents, listCode, SpondError, spondMessage, whenText } from './spondApi.ts';
+import type { SpondEvent } from './spondApi.ts';
 import { checkCode, isUnlocked, lock, touch, unlock as openDoor } from './gate.ts';
 
 type Host = { email: string } | 'not-host' | null | 'loading';
@@ -429,7 +431,7 @@ function PlayTab({ session, update, t, onPresent }: { session: Session; update: 
 
 // ---------- players tab ----------
 
-interface PreviewRow { name: string; gender: Gender; keep: boolean }
+interface PreviewRow { name: string; original: string; gender: Gender; keep: boolean; note?: string }
 
 function NameBox({ id, value, update }: { id: string; value: string; update: (f: (s: Session) => Session) => void }) {
   return (
@@ -448,6 +450,11 @@ function PlayersTab({ session, update, members, past }: {
   const [gender, setGender] = useState<Gender>('');
   const [bulk, setBulk] = useState('');
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
+  const [events, setEvents] = useState<SpondEvent[] | null>(null);
+  const [askCode, setAskCode] = useState(false);
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [spondErr, setSpondErr] = useState('');
   const active = activePlayers(session);
   const expected = expectedPlayers(session);
   const gone = session.players.filter((p) => !p.active && !p.expected);
@@ -456,8 +463,35 @@ function PlayersTab({ session, update, members, past }: {
   const incoming = (rows: PreviewRow[]) =>
     rows.filter((r) => r.keep && r.name.trim()).map((r) => {
       const m = knownMember(r.name);
-      return { name: r.name.trim(), gender: (m?.gender || r.gender) as Gender, level: m ? past[m.id]?.level ?? 0 : 0, memberId: m?.id };
+      return { name: r.name.trim(), source: r.original, gender: (m?.gender || r.gender) as Gender, level: m ? past[m.id]?.level ?? 0 : 0, memberId: m?.id };
     });
+
+  const getFromSpond = async (typed?: string) => {
+    const useCode = typed ?? listCode.get();
+    if (!useCode) { setAskCode(true); return; }
+    setBusy(true);
+    setSpondErr('');
+    try {
+      const found = await fetchSpondEvents(useCode);
+      listCode.set(useCode);
+      setAskCode(false);
+      setCode('');
+      setEvents(found);
+    } catch (e) {
+      const kind = e instanceof SpondError ? e.kind : 'spond';
+      if (kind === 'bad-code') { listCode.clear(); setAskCode(true); }
+      setSpondErr(spondMessage[kind]);
+    }
+    setBusy(false);
+  };
+
+  const useEvent = (ev: SpondEvent) => {
+    setPreview([
+      ...ev.accepted.map((n) => ({ name: n, original: n, gender: '' as Gender, keep: true })),
+      ...ev.waiting.map((n) => ({ name: n, original: n, gender: '' as Gender, keep: false, note: 'waiting list' })),
+    ]);
+    setEvents(null);
+  };
 
   const addWalkIn = (raw: string, g: Gender) => {
     const m = knownMember(raw);
@@ -468,15 +502,44 @@ function PlayersTab({ session, update, members, past }: {
     <div>
       <h2>Bring in tonight's list</h2>
       <div class="card">
-        <p class="muted" style="margin-top:0">
-          In Spond, open the event and copy the list of people who are coming, then paste it here. You can fix any name before it is added.
-        </p>
         {!preview ? (
           <>
-            <textarea placeholder={'Paste the Spond list here.\nOne name per line. Headings, numbers and emoji are ignored.'} value={bulk} onInput={(e) => setBulk((e.target as HTMLTextAreaElement).value)} />
-            <button class="b small" disabled={!parseSpondList(bulk).length} onClick={() => setPreview(parseSpondList(bulk).map((n) => ({ name: n, gender: '', keep: true })))}>
-              Preview {parseSpondList(bulk).length ? `${parseSpondList(bulk).length} names` : ''}
-            </button>
+            {!events && (
+              <>
+                <p class="muted" style="margin-top:0">Gets the people who have said yes in Spond, so you do not have to type them. You can fix any name before they are added.</p>
+                {askCode ? (
+                  <form class="row" onSubmit={(e) => { e.preventDefault(); void getFromSpond(code); }}>
+                    <input type="password" autoComplete="off" placeholder="List code" aria-label="List code" value={code} onInput={(e) => setCode((e.target as HTMLInputElement).value)} style="flex:1;min-width:8rem" />
+                    <button class="b" disabled={busy || !code}>{busy ? 'Checking...' : 'Get list'}</button>
+                  </form>
+                ) : (
+                  <button class="b" disabled={busy} onClick={() => void getFromSpond()}>{busy ? 'Getting the list...' : "Get tonight's list from Spond"}</button>
+                )}
+                {spondErr && <div class="error">{spondErr}</div>}
+                <details style="margin-top:1rem">
+                  <summary style="cursor:pointer;font-weight:600">Or paste a list</summary>
+                  <div class="field" style="margin-top:.6rem">
+                    <textarea placeholder={'One name per line. Headings, numbers and emoji are ignored.'} value={bulk} onInput={(e) => setBulk((e.target as HTMLTextAreaElement).value)} />
+                  </div>
+                  <button class="b small" disabled={!candidatesFromText(bulk).length} onClick={() => setPreview(candidatesFromText(bulk).map((c) => ({ name: c.name, original: c.name, gender: '' as Gender, keep: true })))}>
+                    Preview {candidatesFromText(bulk).length ? `${candidatesFromText(bulk).length} names` : ''}
+                  </button>
+                </details>
+              </>
+            )}
+            {events && (
+              <>
+                <p><strong>Which session?</strong></p>
+                {events.length === 0 && <p class="muted">No sessions found in Spond for the next week.</p>}
+                {events.map((ev) => (
+                  <div class="spread" style="padding:.5rem 0;border-bottom:1px dashed var(--line)" key={ev.id}>
+                    <div><strong>{ev.heading}</strong><br /><span class="muted">{whenText(ev.start)} - {ev.accepted.length} coming{ev.waiting.length ? `, ${ev.waiting.length} waiting` : ''}</span></div>
+                    <button class="b small" onClick={() => useEvent(ev)}>Use this list</button>
+                  </div>
+                ))}
+                <button class="b small ghost" style="margin-top:.7rem" onClick={() => setEvents(null)}>Back</button>
+              </>
+            )}
           </>
         ) : (
           <>
@@ -487,8 +550,9 @@ function PlayersTab({ session, update, members, past }: {
                   <input type="checkbox" checked={r.keep} aria-label={`Include ${r.name}`} onChange={(e) => setPreview(preview.map((x, j) => (j === i ? { ...x, keep: (e.target as HTMLInputElement).checked } : x)))} />
                   <span style="display:flex;gap:.4rem;align-items:center">
                     <input type="text" value={r.name} aria-label="Name" style="min-height:36px;padding:.2rem .5rem;flex:1;min-width:0" onInput={(e) => setPreview(preview.map((x, j) => (j === i ? { ...x, name: (e.target as HTMLInputElement).value } : x)))} />
+                    {r.note && <span class="chip">{r.note}</span>}
                     {knownMember(r.name) && <span class="chip">known</span>}
-                    {session.players.some((p) => p.name.toLowerCase() === r.name.trim().toLowerCase()) && <span class="chip">already added</span>}
+                    {(hasPlayer(session, r.name) || hasPlayer(session, r.original)) && <span class="chip">already added</span>}
                   </span>
                   <select aria-label={`Gender for ${r.name}`} value={r.gender} onChange={(e) => setPreview(preview.map((x, j) => (j === i ? { ...x, gender: (e.target as HTMLSelectElement).value as Gender } : x)))}>
                     <option value="">-</option><option value="M">M</option><option value="F">F</option>
