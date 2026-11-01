@@ -330,7 +330,8 @@ test('expected players are not drawn until checked in; late arrivals join and pl
   assert.equal(activePlayers(s).length, 7);
   s = checkIn(s, s.players.find((p) => p.name === 'H')!.id);
   s = notComing(s, s.players.find((p) => p.name === 'I')!.id);
-  assert.equal(s.players.find((p) => p.name === 'I'), undefined, 'no-show is dropped');
+  const iPlayer = s.players.find((p) => p.name === 'I')!;
+  assert.ok(iPlayer.cancelled && !iPlayer.active && !iPlayer.expected, 'not coming is remembered as cancelled, never drawn');
   const r1 = nextRound(s, seededRng(1));
   checkRoundInvariants(s, r1);
   s = { ...s, rounds: [r1] };
@@ -353,10 +354,11 @@ test('checkInAll, and importing the same name twice does not duplicate', () => {
   assert.equal(s.players.length, 3);
 });
 
-test('notComing never drops someone who is already here', () => {
+test('notComing never touches someone who is already here', () => {
   let s = addPlayer(newSession('x', 'Wed', '2026-10-28'), 'Ann');
   s = notComing(s, s.players[0].id);
   assert.equal(s.players.length, 1);
+  assert.ok(s.players[0].active && !s.players[0].cancelled);
 });
 
 import { candidatesFromText } from './engine.ts';
@@ -382,4 +384,76 @@ test('a name corrected in the preview keeps its Spond spelling for next time', (
   s = addExpected(s, [{ name: 'Eve Ray' }]);
   assert.equal(s.players.length, 1);
   assert.equal(s.players[0].name, 'Evie Ray');
+});
+
+
+import { markNoShow, reinstate, factsFromSession, cancelledPlayers, noShowPlayers, leftPlayers } from './engine.ts';
+
+test('cancelled people are not re-added by a Spond refetch, and can be reinstated', () => {
+  let s = addExpected(newSession('x', 'Wed', '2026-10-28'), [{ name: 'Ann' }, { name: 'Bob' }]);
+  s = notComing(s, s.players[0].id);
+  assert.equal(cancelledPlayers(s).length, 1);
+  assert.equal(expectedPlayers(s).length, 1);
+  s = addExpected(s, [{ name: 'Ann' }]);
+  assert.equal(s.players.length, 2, 'not duplicated');
+  assert.equal(expectedPlayers(s).length, 1, 'still cancelled');
+  s = reinstate(s, s.players[0].id);
+  assert.equal(expectedPlayers(s).length, 2);
+});
+
+test('no-shows are only recorded when a host confirms them', () => {
+  let s = addExpected(newSession('x', 'Wed', '2026-10-28'), ['A', 'B', 'C', 'D', 'E', 'F'].map((n) => ({ name: n })));
+  s = checkIn(s, s.players[0].id); s = checkIn(s, s.players[1].id);
+  s = notComing(s, s.players[2].id);
+  // D, E, F never arrived and nobody has decided yet
+  let facts = factsFromSession(s);
+  assert.deepEqual(facts.players.map((p) => `${p.name}:${p.status}`), ['A:attended', 'B:attended', 'C:cancelled']);
+  s = markNoShow(s, s.players[3].id);
+  facts = factsFromSession(s);
+  assert.ok(facts.players.some((p) => p.name === 'D' && p.status === 'no_show'));
+  assert.ok(!facts.players.some((p) => p.name === 'E'), 'undecided people are not recorded');
+  assert.equal(noShowPlayers(s).length, 1);
+  // someone marked cancelled can be re-marked as a no-show
+  s = markNoShow(s, s.players[2].id);
+  assert.ok(factsFromSession(s).players.some((p) => p.name === 'C' && p.status === 'no_show'));
+});
+
+test('factsFromSession: walk-ins, people who left early, scored games only', () => {
+  let s = makeSession(4, 1);
+  s = addPlayer(s, 'Walker', { walkIn: true });
+  const r1 = nextRound(s, seededRng(1));
+  r1.matches[0].scoreA = 11; r1.matches[0].scoreB = 7;
+  s = { ...s, rounds: [r1] };
+  const r2 = nextRound(s, seededRng(2)); // left unscored
+  s = { ...s, rounds: [r1, r2] };
+  const leaver = r1.matches[0].a[0];
+  s = removePlayer(s, leaver); // went home early
+  const facts = factsFromSession(s);
+  assert.equal(facts.games.length, 1, 'only the scored game');
+  assert.deepEqual(facts.games[0], { round: 1, court: 1, a: r1.matches[0].a, b: r1.matches[0].b, score_a: 11, score_b: 7 });
+  const status = (n: string) => facts.players.find((p) => p.name === n)?.status;
+  assert.equal(status(s.players.find((p) => p.id === leaver)!.name), 'attended', 'left early still attended');
+  assert.equal(status('Walker'), 'walk_in');
+  assert.equal(leftPlayers(s).length, 1);
+});
+
+test('welcome back clears cancelled and no-show flags', () => {
+  let s = addExpected(newSession('x', 'Wed', '2026-10-28'), [{ name: 'Ann' }]);
+  s = markNoShow(notComing(s, s.players[0].id), s.players[0].id);
+  assert.ok(s.players[0].noShow);
+  s = addPlayer(s, 'Ann');
+  assert.ok(s.players[0].active && !s.players[0].noShow && !s.players[0].cancelled && !s.players[0].expected);
+});
+
+
+import { parseMemberLines } from './engine.ts';
+
+test('parseMemberLines handles commas, tabs, angle brackets, bullets and bare names', () => {
+  const out = parseMemberLines('Ann Smith, Ann@Example.com\n2. Bob Jones\tbob@example.com\n- Cat Lee <cat@example.com>\nDan Moss\n\nann smith, other@example.com');
+  assert.deepEqual(out, [
+    { name: 'Ann Smith', email: 'ann@example.com' },
+    { name: 'Bob Jones', email: 'bob@example.com' },
+    { name: 'Cat Lee', email: 'cat@example.com' },
+    { name: 'Dan Moss', email: '' },
+  ]);
 });

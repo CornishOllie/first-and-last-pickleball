@@ -1,5 +1,7 @@
 ---
 const year = new Date().getFullYear();
+// The player stats page is only linked once the play night backend is switched on.
+const showStats = import.meta.env.PUBLIC_PLAY_CLOUD === 'on';
 ---
 
 <footer class="site-footer">
@@ -23,6 +25,7 @@ const year = new Date().getFullYear();
           <li><a href="/sessions">Session times</a></li>
           <li><a href="/coaching">Coaching</a></li>
           <li><a href="/join">Join via Spond</a></li>
+          {showStats && <li><a href="/me">Your stats</a></li>}
           <li><a href="mailto:hello@firstandlastpickleball.co.uk">Email us</a></li>
         </ul>
       </div>

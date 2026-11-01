@@ -78,3 +78,12 @@
   .play .plist li { grid-template-columns: 1fr auto; }
   .play .plist li .extra { grid-column: 1 / -1; display: flex; gap: 0.5rem; }
 }
+
+.play .mem .fields { display: grid; gap: 0.6rem; grid-template-columns: 1fr; }
+@media (min-width: 560px) { .play .mem .fields { grid-template-columns: 1fr 1fr; } }
+.play .mem .flags { display: flex; flex-wrap: wrap; gap: 0.2rem 1.2rem; align-items: center; margin-top: 0.5rem; }
+.play .mem .check { margin: 0.2rem 0; }
+.play .seg { display: inline-flex; border: 1.5px solid var(--sea); border-radius: 999px; overflow: hidden; }
+.play .seg button { background: transparent; border: 0; padding: 0.45rem 1rem; font-weight: 600; color: var(--sea); min-height: 40px; }
+.play .seg button.on { background: var(--sea); color: var(--paper); }
+.play .mem input[type=text], .play .mem input[type=email] { width: 100%; }

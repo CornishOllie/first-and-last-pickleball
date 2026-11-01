@@ -1,0 +1,16 @@
+---
+import Base from '../layouts/Base.astro';
+import PlayerApp from '../play/PlayerApp.tsx';
+---
+
+<Base title="Your stats" description="Your own play night numbers at First & Last Pickleball Club." noindex>
+  <section>
+    <div class="container narrow">
+      <PlayerApp client:only="preact" />
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 46rem; }
+</style>

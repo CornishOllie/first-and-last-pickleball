@@ -1,6 +1,6 @@
 // Where play sessions are kept. Always saved on this device first (so the hall's patchy wifi
 // never loses a night), and copied to Supabase when someone is signed in.
-import type { Session, Gender } from './engine.ts';
+import type { Session, Gender, FactPlayer, FactGame } from './engine.ts';
 import { supabase } from './auth.ts';
 
 export interface Member {
@@ -8,6 +8,24 @@ export interface Member {
   name: string;
   gender: Gender;
   active: boolean;
+}
+
+/** A member as hosts see them in the Members screen. */
+export interface MemberRecord extends Member {
+  email: string;
+  is_junior: boolean;
+  guardian_ok: boolean;
+  show_stats: boolean;
+  linked: boolean;
+}
+
+export interface MemberSummary {
+  member_id: string;
+  attended: number;
+  no_shows: number;
+  cancelled: number;
+  games: number;
+  won: number;
 }
 
 export interface PastRating {
@@ -211,6 +229,68 @@ export const cloud = {
     const { data, error } = await supabase.from('play_members').insert({ name: clean, gender }).select('id,name,gender,active').single();
     if (error) throw error;
     return data as Member;
+  },
+  /** Record a night: who turned up, who did not, and every scored game. Returns each player's saved member id. */
+  async publishFacts(sessionId: string, facts: { players: FactPlayer[]; games: FactGame[] }): Promise<Record<string, string>> {
+    if (!supabase) return {};
+    const { data, error } = await supabase.rpc('play_publish_facts', { p_session: sessionId, p_players: facts.players, p_games: facts.games });
+    if (error) throw error;
+    return (data ?? {}) as Record<string, string>;
+  },
+  async memberRecords(): Promise<MemberRecord[]> {
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .from('play_members')
+      .select('id,name,gender,active,email,is_junior,guardian_ok,show_stats,user_id')
+      .order('name');
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      id: r.id, name: r.name, gender: r.gender, active: r.active, email: r.email ?? '',
+      is_junior: r.is_junior, guardian_ok: r.guardian_ok, show_stats: r.show_stats, linked: !!r.user_id,
+    }));
+  },
+  async memberSummary(): Promise<MemberSummary[]> {
+    if (!supabase) return [];
+    const { data, error } = await supabase.rpc('play_host_summary', {});
+    if (error) throw error;
+    return (data ?? []) as MemberSummary[];
+  },
+  async updateMember(id: string, patch: Partial<Pick<MemberRecord, 'name' | 'gender' | 'email' | 'is_junior' | 'guardian_ok' | 'show_stats' | 'active'>>) {
+    if (!supabase) return;
+    const clean: Record<string, unknown> = { ...patch };
+    if ('email' in clean) clean.email = String(clean.email ?? '').trim() || null;
+    if ('name' in clean) clean.name = String(clean.name ?? '').trim();
+    const { error } = await supabase.from('play_members').update(clean).eq('id', id);
+    if (error) throw error;
+  },
+  async addMembers(rows: { name: string; email: string }[]): Promise<{ added: number; updated: number }> {
+    if (!supabase) return { added: 0, updated: 0 };
+    let added = 0, updated = 0;
+    for (const r of rows) {
+      const name = r.name.trim();
+      if (!name) continue;
+      const email = r.email.trim() || null;
+      const { data: found, error: e1 } = await supabase.from('play_members').select('id').ilike('name', name).maybeSingle();
+      if (e1) throw e1;
+      if (found) {
+        if (email) { const { error } = await supabase.from('play_members').update({ email }).eq('id', found.id); if (error) throw error; updated++; }
+      } else {
+        const { error } = await supabase.from('play_members').insert({ name, email });
+        if (error) throw error;
+        added++;
+      }
+    }
+    return { added, updated };
+  },
+  async deleteMember(id: string) {
+    if (!supabase) return;
+    const { error } = await supabase.from('play_members').delete().eq('id', id);
+    if (error) throw error;
+  },
+  async mergeMembers(keep: string, drop: string) {
+    if (!supabase) return;
+    const { error } = await supabase.rpc('play_merge_members', { p_keep: keep, p_drop: drop });
+    if (error) throw error;
   },
   /** Most recent rating for each member. */
   async ratings(): Promise<PastRating[]> {

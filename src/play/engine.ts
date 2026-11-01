@@ -22,6 +22,10 @@ export interface Player {
   walkIn?: boolean;
   /** The name as it came from Spond, kept when the host corrects the spelling, so fetching the list again does not add a duplicate. */
   source?: string;
+  /** Told the host they are not coming. Kept (not deleted) so attendance can be recorded and a refetch does not add them back. */
+  cancelled?: boolean;
+  /** Confirmed by a host as a no-show: expected, never arrived, never said. */
+  noShow?: boolean;
 }
 
 export interface Match {
@@ -524,7 +528,7 @@ export function addPlayer(
   if (existing) {
     if (existing.active) return s;
     // Welcome back: reactivate rather than add a duplicate.
-    return { ...s, players: s.players.map((p) => (p === existing ? { ...p, active: true } : p)) };
+    return { ...s, players: s.players.map((p) => (p === existing ? { ...p, active: true, expected: false, cancelled: false, noShow: false } : p)) };
   }
   const p: Player = {
     id: newId(),
@@ -582,7 +586,11 @@ export function hasPlayer(s: Session, name: string): boolean {
   return s.players.some((p) => p.name.toLowerCase() === n || p.source?.toLowerCase() === n);
 }
 
-export const expectedPlayers = (s: Session): Player[] => s.players.filter((p) => p.expected && !p.active);
+export const expectedPlayers = (s: Session): Player[] => s.players.filter((p) => p.expected && !p.active && !p.cancelled && !p.noShow);
+export const cancelledPlayers = (s: Session): Player[] => s.players.filter((p) => p.cancelled && !p.active);
+export const noShowPlayers = (s: Session): Player[] => s.players.filter((p) => p.noShow && !p.active);
+/** People who left the session after joining it (not cancelled, not no-shows). */
+export const leftPlayers = (s: Session): Player[] => s.players.filter((p) => !p.active && !p.expected && !p.cancelled && !p.noShow);
 
 /** Someone on the list has arrived. They join from the next round. */
 export function checkIn(s: Session, id: string): Session {
@@ -596,9 +604,51 @@ export function checkInAll(s: Session): Session {
   return expectedPlayers(s).reduce((acc, p) => checkIn(acc, p.id), s);
 }
 
-/** Someone on the list is not coming. They are dropped completely (they never played). */
+/** Someone on the list has said they are not coming. They stay on record as cancelled, never drawn. */
 export function notComing(s: Session, id: string): Session {
-  return { ...s, players: s.players.filter((p) => !(p.id === id && p.expected && !p.active)) };
+  return { ...s, players: s.players.map((p) => (p.id === id && p.expected && !p.active ? { ...p, expected: false, cancelled: true, noShow: false } : p)) };
+}
+
+/** A host confirms someone expected never turned up and never said. Only done at the end of a night. */
+export function markNoShow(s: Session, id: string): Session {
+  return { ...s, players: s.players.map((p) => (p.id === id && !p.active && (p.expected || p.cancelled) ? { ...p, expected: false, cancelled: false, noShow: true } : p)) };
+}
+
+/** Put someone back on the 'still to arrive' list (a mistake, or they changed their mind). */
+export function reinstate(s: Session, id: string): Session {
+  return { ...s, players: s.players.map((p) => (p.id === id && !p.active && (p.cancelled || p.noShow) ? { ...p, cancelled: false, noShow: false, expected: true } : p)) };
+}
+
+// ---------- recording the night ----------
+
+export type AttendanceStatus = 'attended' | 'walk_in' | 'no_show' | 'cancelled';
+export interface FactPlayer { key: string; name: string; gender: Gender; member_id?: string; status: AttendanceStatus }
+export interface FactGame { round: number; court: number; a: [string, string]; b: [string, string]; score_a: number; score_b: number }
+
+/** What to record about a night: who turned up, who did not, and every scored game.
+ *  Someone still on the 'expected' list is not recorded either way until a host decides, so a no-show is never guessed. */
+export function factsFromSession(s: Session): { players: FactPlayer[]; games: FactGame[] } {
+  const present = new Set<string>();
+  for (const r of s.rounds) {
+    for (const id of r.sitting) present.add(id);
+    for (const m of r.matches) for (const id of [...m.a, ...m.b]) present.add(id);
+  }
+  const players: FactPlayer[] = [];
+  for (const p of s.players) {
+    let status: AttendanceStatus | null = null;
+    if (p.active || present.has(p.id)) status = p.walkIn ? 'walk_in' : 'attended';
+    else if (p.cancelled) status = 'cancelled';
+    else if (p.noShow) status = 'no_show';
+    if (status) players.push({ key: p.id, name: p.name, gender: p.gender, member_id: p.memberId, status });
+  }
+  const games: FactGame[] = [];
+  for (const r of s.rounds) {
+    for (const m of r.matches) {
+      if (m.scoreA === null || m.scoreB === null || m.a.length !== 2 || m.b.length !== 2) continue;
+      games.push({ round: r.number, court: m.court, a: [m.a[0], m.a[1]], b: [m.b[0], m.b[1]], score_a: m.scoreA, score_b: m.scoreB });
+    }
+  }
+  return { players, games };
 }
 
 const SPOND_HEADINGS = /^(accepted|attending|going|yes|confirmed|coming|declined|not attending|not going|no|unanswered|no response|not responded|waiting list|waitlist|maybe|invited|unconfirmed|responses?)\b[\s:(\d)]*$/i;
@@ -673,6 +723,25 @@ export interface Candidate {
 export function candidatesFromText(text: string): Candidate[] {
   const hasHeadings = text.split(/\r?\n/).some((l) => SPOND_HEADINGS.test(l.trim()));
   return parseSpondList(text).map((name) => ({ name, status: hasHeadings ? 'yes' : 'unknown' }));
+}
+
+/** Lines such as "Ann Smith, ann@example.com", a tab-separated paste, or just "Ann Smith". Anything with an email-like part keeps it. */
+export function parseMemberLines(text: string): { name: string; email: string }[] {
+  const out: { name: string; email: string }[] = [];
+  const seen = new Set<string>();
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/, '').trim();
+    if (!line) continue;
+    const m = line.match(/[^\s,;\t<>()"]+@[^\s,;\t<>()"]+\.[^\s,;\t<>()"]+/);
+    const email = m ? m[0].toLowerCase() : '';
+    const name = line.replace(m ? m[0] : '', '').replace(/[<>()"]/g, ' ').replace(/[,;\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ name, email });
+  }
+  return out;
 }
 
 // ---------- scoring ----------

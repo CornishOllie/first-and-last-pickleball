@@ -4,6 +4,7 @@ import {
   LEVELS, activePlayers, addPlayer, autoPair, canRedraw, leaderboard, newSession, nextRound, parseNames, playerById,
   playerName, redrawLast, removePlayer, setRating, setScore, summaryText, unpairedPlayers, updatePlayer, pairsAreValid,
   addExpected, checkIn, checkInAll, expectedPlayers, notComing, candidatesFromText, hasPlayer,
+  cancelledPlayers, noShowPlayers, leftPlayers, reinstate, markNoShow, factsFromSession,
 } from './engine.ts';
 import type { Format, Gender, Match, Round, Session } from './engine.ts';
 import { cloud, cloudEnabled, local, latestByMember, markDirty, clearDirty, dirtyIds, exportAll, importAll, rememberOpen, lastOpen } from './backend.ts';
@@ -12,6 +13,7 @@ import { currentHost, sendLoginLink, signOut } from './auth.ts';
 import { idleTimer, startGame, pause, resume, remaining, tick, skip, formatClock } from './timer.ts';
 import type { TimerState } from './timer.ts';
 import { beep, keepAwake, unlock } from './audio.ts';
+import Members from './Members.tsx';
 import { fetchSpondEvents, listCode, SpondError, spondMessage, whenText } from './spondApi.ts';
 import type { SpondEvent } from './spondApi.ts';
 import { checkCode, isUnlocked, lock, touch, unlock as openDoor } from './gate.ts';
@@ -395,6 +397,9 @@ function PlayTab({ session, update, t, onPresent }: { session: Session; update: 
           </div>
         </div>
       )}
+      {session.rounds.length > 0 && !session.ended && (
+        <p class="muted" style="margin:.6rem 0 0">At the end of the night, press <strong>Save session</strong> on the Finish tab so attendance and scores are recorded.</p>
+      )}
       {active.length < 4 && <div class="note">You need at least four players here. Use the Players tab to bring in tonight's list.</div>}
 
       {fixed && (
@@ -457,7 +462,8 @@ function PlayersTab({ session, update, members, past }: {
   const [spondErr, setSpondErr] = useState('');
   const active = activePlayers(session);
   const expected = expectedPlayers(session);
-  const gone = session.players.filter((p) => !p.active && !p.expected);
+  const gone = leftPlayers(session);
+  const cancelled = cancelledPlayers(session);
   const knownMember = (n: string) => members.find((m) => m.name.toLowerCase() === n.trim().toLowerCase());
 
   const incoming = (rows: PreviewRow[]) =>
@@ -618,6 +624,16 @@ function PlayersTab({ session, update, members, past }: {
         <button class="b" disabled={!name.trim()}>Add</button>
       </form>
 
+      {cancelled.length > 0 && (
+        <div>
+          <h2>Said they are not coming ({cancelled.length})</h2>
+          <p class="muted">Kept on record as cancelled. Changed their mind? Put them back.</p>
+          <div class="chips">
+            {cancelled.map((p) => <button class="chip" style="border:0;cursor:pointer" onClick={() => update((s) => reinstate(s, p.id))}>{p.name} (put back)</button>)}
+          </div>
+        </div>
+      )}
+
       {gone.length > 0 && (
         <div>
           <h2>Left or removed</h2>
@@ -702,8 +718,32 @@ function FinishTab({ session, update, past, onEnd, cloudOn }: {
         </button>
       </div>
 
+      {(expectedPlayers(session).length > 0 || cancelledPlayers(session).length > 0 || noShowPlayers(session).length > 0) && (
+        <div>
+          <h2>Who did not turn up?</h2>
+          <p class="muted">These people were on the list but never arrived. A no-show is only recorded when you say so, and only hosts ever see it. Leave someone alone to record nothing.</p>
+          <div class="card">
+            {[...expectedPlayers(session), ...cancelledPlayers(session), ...noShowPlayers(session)].map((p) => (
+              <div class="spread" style="padding:.4rem 0;border-bottom:1px dashed var(--line)" key={p.id}>
+                <span><strong>{p.name}</strong> {p.cancelled && <span class="chip">cancelled</span>}{p.noShow && <span class="chip">no-show</span>}</span>
+                <span class="row">
+                  {!p.noShow && <button class="b small ghost" onClick={() => update((s) => markNoShow(s, p.id))}>No-show</button>}
+                  {!p.cancelled && <button class="b small ghost" onClick={() => update((s) => notComing(reinstate(s, p.id), p.id))}>Cancelled</button>}
+                  {(p.cancelled || p.noShow) && <button class="b small ghost" onClick={() => update((s) => reinstate(s, p.id))}>Undo</button>}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <h2>Save</h2>
-      <p class="muted">Saving finishes the night and keeps each rating against that player for next time. It stays on this phone, so download a backup too.</p>
+      <p class="muted">
+        {cloudOn
+          ? 'Saving finishes the night, records who turned up and every scored game for the stats, and keeps each rating against that player. Players with an email on their record can then see their own numbers.'
+          : 'Saving finishes the night and keeps each rating against that player for next time. It stays on this phone, so download a backup too.'}
+      </p>
+      {cloudOn && <p class="muted">{factsFromSession(session).games.length} scored games and {factsFromSession(session).players.length} players will be recorded.</p>}
       {msg && <div class={msg === 'Saved.' ? 'note' : 'error'}>{msg}</div>}
       {!cloudOn && <p><button class="b small ghost" onClick={() => download(backupName(), JSON.stringify(exportAll()))}>Download backup</button></p>}
       <button class="b" onClick={async () => { const e = await onEnd(); setMsg(e ?? 'Saved.'); }}>{session.ended ? 'Save again' : 'Save session'}</button>
@@ -755,7 +795,8 @@ function SessionScreen({ session, update, tab, setTab, members, past, pastRows, 
 export default function App() {
   const cloudOn = cloudEnabled();
   const [host, setHost] = useState<Host>(cloudOn ? 'loading' : null);
-  const [opened, setOpened] = useState(cloudOn || isUnlocked());
+  const [opened, setOpened] = useState(isUnlocked());
+  const [screen, setScreen] = useState<'sessions' | 'members'>('sessions');
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [tab, setTab] = useState<Tab>('play');
@@ -768,13 +809,13 @@ export default function App() {
   const timerTimeout = useRef<number | undefined>(undefined);
   const first = useRef(true);
 
-  const signedIn = cloudOn ? host !== 'loading' && host !== null && host !== 'not-host' : opened;
+  const hostOk = !cloudOn || (host !== 'loading' && host !== null && host !== 'not-host');
+  const signedIn = opened && hostOk;
 
   useEffect(() => { if (cloudOn) currentHost().then(setHost); }, []);
 
   // Stay unlocked while the tool is in use. If it has been 12 hours since the last use, ask for the code again.
   useEffect(() => {
-    if (cloudOn) return;
     const alive = () => { if (isUnlocked()) touch(); else setOpened(false); };
     const events = ['pointerdown', 'keydown', 'visibilitychange'];
     events.forEach((e) => window.addEventListener(e, alive));
@@ -842,6 +883,7 @@ export default function App() {
     timerTimeout.current = window.setTimeout(async () => {
       try {
         await cloud.save(session);
+        if (session.ended) await cloud.publishFacts(session.id, factsFromSession(session));
         clearDirty(session.id);
         setSync('synced');
       } catch {
@@ -864,33 +906,47 @@ export default function App() {
     void refreshLists();
   };
 
-    const endSession = async (): Promise<string | null> => {
+  const endSession = async (): Promise<string | null> => {
     if (!session) return null;
     try {
-      let s = session;
-      const rated = s.players.filter((p) => s.ratings[p.id] && s.ratings[p.id].level > 0);
-      // make sure every rated player is a saved member so the rating is remembered next time
+      let s: Session = { ...session, ended: true };
       const rows: { memberId: string; sessionId: string; level: number; note: string }[] = [];
-      for (const p of rated) {
-        const m = cloudOn ? await cloud.ensureMember(p.name, p.gender) : local.ensureMember(p.name, p.gender);
-        if (!p.memberId) s = { ...s, players: s.players.map((x) => (x.id === p.id ? { ...x, memberId: m.id } : x)) };
-        rows.push({ memberId: m.id, sessionId: s.id, level: s.ratings[p.id].level, note: s.ratings[p.id].note });
+      const rated = s.players.filter((p) => s.ratings[p.id] && s.ratings[p.id].level > 0);
+
+      if (cloudOn) {
+        // 1. the session itself, 2. who turned up and every scored game, 3. ratings against the saved people
+        await cloud.save(s);
+        const map = await cloud.publishFacts(s.id, factsFromSession(s));
+        s = { ...s, players: s.players.map((p) => (map[p.id] ? { ...p, memberId: map[p.id] } : p)) };
+        for (const p of rated) {
+          let memberId = p.memberId;
+          if (!memberId) memberId = (await cloud.ensureMember(p.name, p.gender)).id;
+          rows.push({ memberId, sessionId: s.id, level: s.ratings[p.id].level, note: s.ratings[p.id].note });
+        }
+        await cloud.save(s);
+        await cloud.saveRatings(rows);
+        clearDirty(s.id);
+        setSync('synced');
+      } else {
+        for (const p of rated) {
+          const m = local.ensureMember(p.name, p.gender);
+          if (!p.memberId) s = { ...s, players: s.players.map((x) => (x.id === p.id ? { ...x, memberId: m.id } : x)) };
+          rows.push({ memberId: m.id, sessionId: s.id, level: s.ratings[p.id].level, note: s.ratings[p.id].note });
+        }
       }
-      s = { ...s, ended: true };
       setSession(s);
       local.save(s);
       local.saveRatings(rows.map((r) => ({ memberId: r.memberId, level: r.level, note: r.note, at: new Date().toISOString(), sessionName: s.name, sessionId: s.id })));
-      if (cloudOn) { await cloud.save(s); await cloud.saveRatings(rows); clearDirty(s.id); setSync('synced'); }
       void refreshLists();
       return null;
     } catch (e) {
-      return `Could not save: ${(e as Error).message}`;
+      return `Could not save: ${(e as { message?: string })?.message ?? 'unknown error'}`;
     }
   };
 
+  if (!opened) return <div class="play"><h1>Play night</h1><DoorCode onOpen={() => setOpened(true)} /></div>;
   if (host === 'loading') return <div class="play"><p class="muted">Loading...</p></div>;
-  if (!cloudOn && !opened) return <div class="play"><h1>Play night</h1><DoorCode onOpen={() => setOpened(true)} /></div>;
-  if (cloudOn && !signedIn) return <div class="play"><h1>Play night</h1><Login notHost={host === 'not-host'} /></div>;
+  if (cloudOn && !hostOk) return <div class="play"><h1>Play night</h1><Login notHost={host === 'not-host'} /></div>;
 
   return (
     <div class="play">
@@ -902,12 +958,19 @@ export default function App() {
         <div class="row">
           {session && <button class="b small ghost" onClick={() => { setSession(null); first.current = true; void refreshLists(); }}>All sessions</button>}
           {cloudOn && <button class="b small ghost" onClick={() => signOut().then(() => location.reload())}>Sign out</button>}
-          {!cloudOn && <button class="b small ghost" onClick={() => { lock(); setOpened(false); }}>Lock</button>}
+          <button class="b small ghost" onClick={() => { lock(); setOpened(false); }}>Lock</button>
         </div>
       </div>
       {loadErr && <div class="error">{loadErr}</div>}
 
-      {!session && <Home sessions={sessions} onOpen={open} onCreate={create} onDelete={remove} onRestored={() => void refreshLists()} />}
+      {!session && cloudOn && (
+        <div class="seg" role="tablist" style="margin:.8rem 0">
+          <button class={screen === 'sessions' ? 'on' : ''} role="tab" aria-selected={screen === 'sessions'} onClick={() => setScreen('sessions')}>Sessions</button>
+          <button class={screen === 'members' ? 'on' : ''} role="tab" aria-selected={screen === 'members'} onClick={() => setScreen('members')}>Members</button>
+        </div>
+      )}
+      {!session && screen === 'sessions' && <Home sessions={sessions} onOpen={open} onCreate={create} onDelete={remove} onRestored={() => void refreshLists()} />}
+      {!session && cloudOn && screen === 'members' && <Members />}
 
       {session && (
         <SessionScreen

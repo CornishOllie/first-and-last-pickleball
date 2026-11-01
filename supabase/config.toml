@@ -7,10 +7,15 @@ site_url = "https://www.firstandlastpickleball.co.uk/host"
 additional_redirect_urls = [
   "https://www.firstandlastpickleball.co.uk/host",
   "https://firstandlastpickleball.co.uk/host",
+  "https://www.firstandlastpickleball.co.uk/me",
+  "https://firstandlastpickleball.co.uk/me",
   "http://localhost:4321/host",
   "http://localhost:4399/host",
+  "http://localhost:4321/me",
+  "http://localhost:4399/me",
 ]
-# Hosts are added by invitation only. Nobody can create their own account.
+# Accounts are made only by us: hosts by scripts/add-host.mjs, players by /api/player-login (and only for an
+# email a host has put on a member record). Nobody can create their own account.
 enable_signup = false
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
