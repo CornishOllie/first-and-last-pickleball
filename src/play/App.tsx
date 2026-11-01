@@ -310,7 +310,15 @@ function Present({ session, round, t, onClose }: { session: Session; round: Roun
       {round && (
         <div class="courts">
           {round.matches.map((m) => (
-            <div class="pc"><b>Court {m.court}</b><br />{names(m.a)}<br /><span class="muted">v</span><br />{names(m.b)}</div>
+            m.scoreA !== null && m.scoreB !== null ? (
+              <div class="pc">
+                <b>Court {m.court}</b>
+                <div class={`bs ${m.scoreA > m.scoreB ? 'w' : ''}`}><span>{names(m.a)}</span><strong>{m.scoreA}</strong></div>
+                <div class={`bs ${m.scoreB > m.scoreA ? 'w' : ''}`}><span>{names(m.b)}</span><strong>{m.scoreB}</strong></div>
+              </div>
+            ) : (
+              <div class="pc"><b>Court {m.court}</b><br />{names(m.a)}<br /><span class="muted">v</span><br />{names(m.b)}</div>
+            )
           ))}
           {round.sitting.length > 0 && <div class="pc"><b>Sitting out</b><br />{names(round.sitting)}</div>}
         </div>
