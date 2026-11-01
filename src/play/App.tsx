@@ -323,6 +323,10 @@ function ScoreRow({ session, round, m, onScore }: { session: Session; round: Rou
   const num = (v: string): number | null => (v === '' ? null : Math.max(0, Math.floor(Number(v))));
   const aWin = m.scoreA !== null && m.scoreB !== null && m.scoreA > m.scoreB;
   const bWin = m.scoreA !== null && m.scoreB !== null && m.scoreB > m.scoreA;
+  const both = m.scoreA !== null && m.scoreB !== null;
+  const status = both ? (m.scoreA === m.scoreB ? 'Saved: a draw' : `Saved: ${names(aWin ? m.a : m.b)} won ${Math.max(m.scoreA!, m.scoreB!)} to ${Math.min(m.scoreA!, m.scoreB!)}`)
+    : m.scoreA !== null || m.scoreB !== null ? 'Add the other score and it saves.' : 'Type both scores. They save as you type.';
+  const done = (e: KeyboardEvent) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); };
   return (
     <div class="match">
       <div class="court"><small>Court</small>{m.court}</div>
@@ -330,14 +334,17 @@ function ScoreRow({ session, round, m, onScore }: { session: Session; round: Rou
         <div class={`side ${aWin ? 'win' : ''}`}>
           <div class="names">{names(m.a)}</div>
           <input type="number" inputMode="numeric" min={0} aria-label={`Score for ${names(m.a)}`} value={m.scoreA ?? ''}
+            enterKeyHint="done" onKeyDown={done}
             onInput={(e) => onScore(m.court, num((e.target as HTMLInputElement).value), m.scoreB)} />
         </div>
         <div class="vs">versus</div>
         <div class={`side ${bWin ? 'win' : ''}`}>
           <div class="names">{names(m.b)}</div>
           <input type="number" inputMode="numeric" min={0} aria-label={`Score for ${names(m.b)}`} value={m.scoreB ?? ''}
+            enterKeyHint="done" onKeyDown={done}
             onInput={(e) => onScore(m.court, m.scoreA, num((e.target as HTMLInputElement).value))} />
         </div>
+        <div class={both ? 'scored' : 'muted'} style="font-size:.9rem;margin-top:.3rem">{both && '\u2713 '}{status}</div>
       </div>
     </div>
   );
@@ -460,6 +467,9 @@ function PlayersTab({ session, update, members, past }: {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [spondErr, setSpondErr] = useState('');
+  const [picking, setPicking] = useState(false);
+  const [find, setFind] = useState('');
+  const [picked, setPicked] = useState<string[]>([]);
   const active = activePlayers(session);
   const expected = expectedPlayers(session);
   const gone = leftPlayers(session);
@@ -499,6 +509,17 @@ function PlayersTab({ session, update, members, past }: {
     setEvents(null);
   };
 
+  const available = members
+    .filter((m) => m.active && !hasPlayer(session, m.name))
+    .filter((m) => m.name.toLowerCase().includes(find.trim().toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const chosen = members.filter((m) => picked.includes(m.id) && !hasPlayer(session, m.name));
+  const fromMembers = (here: boolean) => {
+    const rows = chosen.map((m) => ({ name: m.name, gender: m.gender, level: past[m.id]?.level ?? 0, memberId: m.id }));
+    update((s) => { const added = addExpected(s, rows); return here ? checkInAll(added) : added; });
+    setPicked([]); setFind(''); setPicking(false);
+  };
+
   const addWalkIn = (raw: string, g: Gender) => {
     const m = knownMember(raw);
     update((s) => addPlayer(s, raw, { gender: m?.gender || g, level: m ? past[m.id]?.level ?? 0 : 0, memberId: m?.id, walkIn: true }));
@@ -506,6 +527,39 @@ function PlayersTab({ session, update, members, past }: {
 
   return (
     <div>
+      {members.some((m) => m.active) && (
+        <>
+          <h2>Add from the club list</h2>
+          <div class="card">
+            {!picking ? (
+              <button class="b" onClick={() => setPicking(true)}>Pick from the club list ({members.filter((m) => m.active && !hasPlayer(session, m.name)).length})</button>
+            ) : (
+              <>
+                <input type="search" placeholder="Search names" aria-label="Search the club list" value={find} onInput={(e) => setFind((e.target as HTMLInputElement).value)} style="width:100%;margin-bottom:.5rem" />
+                <div class="row" style="margin-bottom:.4rem">
+                  <button class="b small ghost" onClick={() => setPicked(Array.from(new Set([...picked, ...available.map((m) => m.id)])))}>Tick all shown</button>
+                  <button class="b small ghost" onClick={() => setPicked([])}>Clear</button>
+                </div>
+                <ul class="plist" style="max-height:18rem;overflow:auto">
+                  {available.length === 0 && <li class="muted">Nobody left to add.</li>}
+                  {available.map((m) => (
+                    <li key={m.id} style="grid-template-columns:auto 1fr">
+                      <input type="checkbox" id={`pick-${m.id}`} checked={picked.includes(m.id)} onChange={(e) => setPicked((e.target as HTMLInputElement).checked ? [...picked, m.id] : picked.filter((x) => x !== m.id))} />
+                      <label for={`pick-${m.id}`} style="cursor:pointer">{m.name}</label>
+                    </li>
+                  ))}
+                </ul>
+                <div class="row" style="margin-top:.7rem">
+                  <button class="b small" disabled={chosen.length === 0} onClick={() => fromMembers(true)}>Add {chosen.length} and mark here</button>
+                  <button class="b small ghost" disabled={chosen.length === 0} onClick={() => fromMembers(false)}>Add {chosen.length} as expected</button>
+                  <button class="b small ghost" onClick={() => { setPicking(false); setPicked([]); setFind(''); }}>Cancel</button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
+
       <h2>Bring in tonight's list</h2>
       <div class="card">
         {!preview ? (
