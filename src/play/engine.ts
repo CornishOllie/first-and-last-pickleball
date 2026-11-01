@@ -70,6 +70,10 @@ export interface Session {
   pairs: [string, string][];
   ended: boolean;
   ratings: Record<string, Rating>;
+  /** The host has said this round is the last one. */
+  lastRound?: number;
+  /** The last round's game has finished (the timer does not go to a changeover). */
+  lastDone?: boolean;
 }
 
 export type Rng = () => number;

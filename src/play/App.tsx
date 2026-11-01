@@ -212,7 +212,7 @@ function Home({ sessions, onOpen, onCreate, onDelete, onRestored }: {
 
 // ---------- timer ----------
 
-function useTimer(session: Session) {
+function useTimer(session: Session, onFinal: () => void) {
   const key = `fl-play:timer:${session.id}`;
   const [state, setState] = useState<TimerState>(() => {
     try {
@@ -229,6 +229,12 @@ function useTimer(session: Session) {
   const settings = { gameMinutes: session.settings.gameMinutes, changeoverMinutes: session.settings.changeoverMinutes };
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  // True while the round on the courts is the one the host has called the last.
+  const finalNow = session.lastRound !== undefined && session.lastRound === session.rounds.length && !session.lastDone;
+  const finalRef = useRef(finalNow);
+  finalRef.current = finalNow;
+  const onFinalRef = useRef(onFinal);
+  onFinalRef.current = onFinal;
 
   const put = (next: TimerState) => {
     ref.current = next;
@@ -250,6 +256,14 @@ function useTimer(session: Session) {
       setNow(t);
       const cur = ref.current;
       const r = tick(cur, settingsRef.current, t);
+      if (r.event === 'game-over' && finalRef.current) {
+        // The last game: sound the buzzer, no changeover, stop the clock.
+        buzzer();
+        void keepAwake(false);
+        put(idleTimer());
+        onFinalRef.current();
+        return;
+      }
       if (r.event === 'game-over') buzzer();
       if (r.event === 'change-over') { goTone(); void keepAwake(false); }
       if (r.state.phase !== cur.phase) { warned.current = false; lastPip.current = null; }
@@ -269,7 +283,10 @@ function useTimer(session: Session) {
     start: () => { unlock(); void keepAwake(true); warned.current = false; put(startGame(settingsRef.current, Date.now())); },
     pause: () => put(pause(ref.current, Date.now())),
     resume: () => { unlock(); put(resume(ref.current, Date.now())); },
-    skip: () => put(skip(ref.current, settingsRef.current, Date.now())),
+    skip: () => {
+      if (finalRef.current && ref.current.phase === 'game') { put(idleTimer()); onFinalRef.current(); return; }
+      put(skip(ref.current, settingsRef.current, Date.now()));
+    },
     reset: () => { void keepAwake(false); put(idleTimer()); },
   };
 }
@@ -306,9 +323,9 @@ function Present({ session, round, t, onClose }: { session: Session; round: Roun
   return (
     <div class="present">
       <button class="b ghost x" onClick={onClose}>Close</button>
-      <div class="ph">{round ? `Round ${round.number}` : 'Round'} &middot; {phaseLabel(t)}</div>
-      <div class={`big ${t.state.phase === 'change' ? 'change' : t.state.phase === 'ready' ? 'ready' : ''}`}>
-        {t.state.phase === 'idle' || t.state.phase === 'ready' ? (t.state.phase === 'ready' ? 'Next!' : '--:--') : formatClock(t.left)}
+      <div class="ph">{session.lastDone ? 'Full time' : <>{round ? `Round ${round.number}` : 'Round'}{round && round.number === session.lastRound ? ' (last round)' : ''} &middot; {phaseLabel(t)}</>}</div>
+      <div class={`big ${session.lastDone || t.state.phase === 'ready' ? 'ready' : t.state.phase === 'change' ? 'change' : ''}`} style={session.lastDone ? 'font-size:clamp(3rem,13vw,10rem)' : undefined}>
+        {session.lastDone ? 'Well played!' : t.state.phase === 'idle' || t.state.phase === 'ready' ? (t.state.phase === 'ready' ? 'Next!' : '--:--') : formatClock(t.left)}
       </div>
       {round && (
         <div class="courts">
@@ -326,9 +343,9 @@ function Present({ session, round, t, onClose }: { session: Session; round: Roun
           {round.sitting.length > 0 && <div class="pc"><b>Sitting out</b><br />{names(round.sitting)}</div>}
         </div>
       )}
-      {scored.length > 0 && (t.state.phase === 'change' || t.state.phase === 'ready') && (
+      {scored.length > 0 && (session.lastDone || t.state.phase === 'change' || t.state.phase === 'ready') && (
         <div class="past">
-          <div class="ph" style="margin-top:1.2rem">Scores so far</div>
+          <div class="ph" style="margin-top:1.2rem">{session.lastDone ? 'Final scores' : 'Scores so far'}</div>
           {scored.map((r) => (
             <div class="prow" key={r.number}>
               <div class="rn">R{r.number}</div>
@@ -400,13 +417,14 @@ function RoundCard({ session, round, onScore, title }: { session: Session; round
   );
 }
 
-function PlayTab({ session, update, t, onPresent }: { session: Session; update: (f: (s: Session) => Session) => void; t: TimerApi; onPresent: () => void }) {
+function PlayTab({ session, update, t, onPresent, onFinish }: { session: Session; update: (f: (s: Session) => Session) => void; t: TimerApi; onPresent: () => void; onFinish: () => void }) {
   const [error, setError] = useState('');
   const active = activePlayers(session);
   const last = session.rounds[session.rounds.length - 1];
   const fixed = session.settings.format === 'fixed';
   const pairs = pairsAreValid(session);
   const loose = unpairedPlayers(session);
+  const isLast = !!last && session.lastRound === last.number;
 
   const draw = () => {
     setError('');
@@ -462,10 +480,24 @@ function PlayTab({ session, update, t, onPresent }: { session: Session; update: 
         </div>
       )}
 
-      <div class="row" style="margin:1rem 0">
-        <button class="b" disabled={active.length < 4} onClick={draw}>{session.rounds.length === 0 ? 'Draw round 1' : `Draw round ${session.rounds.length + 1}`}</button>
-        {canRedraw(session) && <button class="b ghost" onClick={redraw}>Redraw this round</button>}
-      </div>
+      {isLast ? (
+        <div class="card soft" style="margin:1rem 0">
+          {session.lastDone
+            ? <p style="margin:0 0 .6rem"><strong>That was the last game.</strong> Check the scores are all in, then save the night.</p>
+            : <p style="margin:0 0 .6rem"><strong>Round {last!.number} is the last round.</strong> When its buzzer goes there is no changeover, and the big screen shows the final scores.</p>}
+          <div class="row">
+            {session.lastDone && <button class="b" onClick={onFinish}>Go to Finish</button>}
+            <button class="b small ghost" onClick={() => update((s) => ({ ...s, lastRound: undefined, lastDone: false }))}>Not the last round after all</button>
+            {canRedraw(session) && !session.lastDone && <button class="b small ghost" onClick={redraw}>Redraw this round</button>}
+          </div>
+        </div>
+      ) : (
+        <div class="row" style="margin:1rem 0">
+          <button class="b" disabled={active.length < 4} onClick={draw}>{session.rounds.length === 0 ? 'Draw round 1' : `Draw round ${session.rounds.length + 1}`}</button>
+          {last && <button class="b ghost" onClick={() => update((s) => ({ ...s, lastRound: last.number, lastDone: false }))}>Make round {last.number} the last</button>}
+          {canRedraw(session) && <button class="b ghost" onClick={redraw}>Redraw this round</button>}
+        </div>
+      )}
       {error && <div class="error">{error}</div>}
 
       {last && <RoundCard session={session} round={last} onScore={onScore} title={`Round ${last.number} (now)`} />}
@@ -865,7 +897,7 @@ function SessionScreen({ session, update, tab, setTab, members, past, pastRows, 
   presenting: boolean;
   setPresenting: (b: boolean) => void;
 }) {
-  const timer = useTimer(session);
+  const timer = useTimer(session, () => update((s) => ({ ...s, lastDone: true })));
   return (
     <>
       <div class="tabs" role="tablist">
@@ -875,7 +907,7 @@ function SessionScreen({ session, update, tab, setTab, members, past, pastRows, 
           </button>
         ))}
       </div>
-      {tab === 'play' && <PlayTab session={session} update={update} t={timer} onPresent={() => setPresenting(true)} />}
+      {tab === 'play' && <PlayTab session={session} update={update} t={timer} onPresent={() => setPresenting(true)} onFinish={() => setTab('finish')} />}
       {tab === 'players' && <PlayersTab session={session} update={update} members={members} past={past} />}
       {tab === 'table' && <TableTab session={session} />}
       {tab === 'finish' && <FinishTab session={session} update={update} past={latestByMember(pastRows.filter((r) => r.sessionId !== session.id))} onEnd={onEnd} cloudOn={cloudOn} />}
