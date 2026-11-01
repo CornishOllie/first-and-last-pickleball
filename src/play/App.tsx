@@ -297,6 +297,9 @@ function TimerPanel({ t, onPresent }: { t: TimerApi; onPresent: () => void }) {
 
 function Present({ session, round, t, onClose }: { session: Session; round: Round | undefined; t: TimerApi; onClose: () => void }) {
   const names = (ids: string[]) => ids.map((id) => playerName(session, id)).join(' & ');
+  const scored = session.rounds
+    .filter((r) => r.number < (round?.number ?? 0) && r.matches.some((m) => m.scoreA !== null || m.scoreB !== null))
+    .sort((x, y) => y.number - x.number);
   return (
     <div class="present">
       <button class="b ghost x" onClick={onClose}>Close</button>
@@ -310,6 +313,30 @@ function Present({ session, round, t, onClose }: { session: Session; round: Roun
             <div class="pc"><b>Court {m.court}</b><br />{names(m.a)}<br /><span class="muted">v</span><br />{names(m.b)}</div>
           ))}
           {round.sitting.length > 0 && <div class="pc"><b>Sitting out</b><br />{names(round.sitting)}</div>}
+        </div>
+      )}
+      {scored.length > 0 && (t.state.phase === 'change' || t.state.phase === 'ready') && (
+        <div class="past">
+          <div class="ph" style="margin-top:1.2rem">Scores so far</div>
+          {scored.map((r) => (
+            <div class="prow" key={r.number}>
+              <div class="rn">R{r.number}</div>
+              <div class="pms">
+                {r.matches.map((m) => {
+                  const aw = m.scoreA !== null && m.scoreB !== null && m.scoreA > m.scoreB;
+                  const bw = m.scoreA !== null && m.scoreB !== null && m.scoreB > m.scoreA;
+                  return (
+                    <div class="pm" key={m.court}>
+                      <span class="ct">C{m.court}</span>
+                      <span class={aw ? 'w' : ''}>{names(m.a)}</span>
+                      <strong>{m.scoreA ?? '-'} - {m.scoreB ?? '-'}</strong>
+                      <span class={bw ? 'w' : ''}>{names(m.b)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

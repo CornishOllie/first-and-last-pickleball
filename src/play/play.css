@@ -90,3 +90,11 @@
 .play .scored { color: var(--green, #2f6b3f); font-weight: 600; }
 .play .side input::placeholder { font-size: 0.72rem; font-weight: 500; color: var(--sea-light, #6a9aa6); }
 .play .side { grid-template-columns: 1fr 5rem; }
+.present .prow { display: grid; grid-template-columns: 2.2rem 1fr; gap: 0.5rem; padding: 0.35rem 0; border-top: 1px solid #12404a; font-size: clamp(0.8rem, 1.5vw, 1.05rem); }
+.present .rn { color: var(--coral); font-weight: 700; }
+.present .pms { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 0.2rem 1.2rem; }
+.present .pm { display: grid; grid-template-columns: 1.6rem 1fr auto 1fr; gap: 0.5rem; align-items: baseline; }
+.present .pm .ct { color: var(--sand-dark); }
+.present .pm strong { font-variant-numeric: tabular-nums; color: #fff; }
+.present .pm .w { color: #8fe0a8; font-weight: 600; }
+.present .pm span:last-child { text-align: right; }
