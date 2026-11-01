@@ -73,3 +73,15 @@ export function formatClock(msLeft: number): string {
   const s = total % 60;
   return `${m}:${String(s).padStart(2, '0')}`;
 }
+
+/**
+ * Countdown pips: the last 5 seconds of a game and the last 3 seconds of a changeover, one per second.
+ * Returns the whole second to pip for, or null if there is nothing to sound (or it already sounded).
+ */
+export function pipSecond(phase: Phase, running: boolean, leftMs: number, lastPip: number | null): number | null {
+  if (!running) return null;
+  const secs = Math.ceil(leftMs / 1000);
+  const from = phase === 'game' ? 5 : phase === 'change' ? 3 : 0;
+  if (secs < 1 || secs > from) return null;
+  return secs === lastPip ? null : secs;
+}

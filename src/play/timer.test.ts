@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { idleTimer, startGame, pause, resume, remaining, tick, skip, formatClock } from './timer.ts';
+import { idleTimer, startGame, pause, resume, remaining, tick, skip, formatClock, pipSecond } from './timer.ts';
 
 const T = { gameMinutes: 12, changeoverMinutes: 3 };
 const MIN = 60_000;
@@ -61,4 +61,21 @@ test('clock formatting rounds up so 0:00 only shows at the end', () => {
   assert.equal(formatClock(61_000), '1:01');
   assert.equal(formatClock(500), '0:01');
   assert.equal(formatClock(0), '0:00');
+});
+
+test('pips: a game pips for its last 5 seconds only, once per second', () => {
+  assert.equal(pipSecond('game', true, 6000, null), null);
+  assert.equal(pipSecond('game', true, 5000, null), 5);
+  assert.equal(pipSecond('game', true, 4600, 5), null); // same second, already sounded
+  assert.equal(pipSecond('game', true, 4000, 5), 4);
+  assert.equal(pipSecond('game', true, 1, 2), 1);
+  assert.equal(pipSecond('game', true, 0, 1), null); // the buzzer takes over
+});
+
+test('pips: a changeover pips for its last 3 seconds, and nothing when paused or idle', () => {
+  assert.equal(pipSecond('change', true, 4000, null), null);
+  assert.equal(pipSecond('change', true, 3000, null), 3);
+  assert.equal(pipSecond('change', false, 3000, null), null);
+  assert.equal(pipSecond('idle', true, 2000, null), null);
+  assert.equal(pipSecond('ready', true, 2000, null), null);
 });

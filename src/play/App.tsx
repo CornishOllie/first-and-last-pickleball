@@ -10,9 +10,9 @@ import type { Format, Gender, Match, Round, Session } from './engine.ts';
 import { cloud, cloudEnabled, local, latestByMember, markDirty, clearDirty, dirtyIds, exportAll, importAll, rememberOpen, lastOpen } from './backend.ts';
 import type { Member, PastRating, SessionSummary } from './backend.ts';
 import { currentHost, sendLoginLink, signOut } from './auth.ts';
-import { idleTimer, startGame, pause, resume, remaining, tick, skip, formatClock } from './timer.ts';
+import { idleTimer, startGame, pause, resume, remaining, tick, skip, formatClock, pipSecond } from './timer.ts';
 import type { TimerState } from './timer.ts';
-import { beep, keepAwake, unlock } from './audio.ts';
+import { beep, buzzer, goTone, keepAwake, pip, unlock } from './audio.ts';
 import Members from './Members.tsx';
 import { fetchSpondEvents, listCode, SpondError, spondMessage, whenText } from './spondApi.ts';
 import type { SpondEvent } from './spondApi.ts';
@@ -225,6 +225,7 @@ function useTimer(session: Session) {
   const [now, setNow] = useState(Date.now());
   const ref = useRef(state);
   const warned = useRef(false);
+  const lastPip = useRef<number | null>(null);
   const settings = { gameMinutes: session.settings.gameMinutes, changeoverMinutes: session.settings.changeoverMinutes };
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -249,9 +250,11 @@ function useTimer(session: Session) {
       setNow(t);
       const cur = ref.current;
       const r = tick(cur, settingsRef.current, t);
-      if (r.event === 'game-over') beep(3, 660);
-      if (r.event === 'change-over') { beep(2, 990); void keepAwake(false); }
-      if (r.state.phase !== cur.phase) warned.current = false;
+      if (r.event === 'game-over') buzzer();
+      if (r.event === 'change-over') { goTone(); void keepAwake(false); }
+      if (r.state.phase !== cur.phase) { warned.current = false; lastPip.current = null; }
+      const sec = pipSecond(cur.phase, cur.running, remaining(cur, t), lastPip.current);
+      if (sec !== null && r.state === cur) { lastPip.current = sec; pip(sec === 1); }
       if (!warned.current && r.state.running && r.state.phase === 'game' && remaining(r.state, t) <= 60_000 && settingsRef.current.gameMinutes > 2) {
         warned.current = true;
         beep(1, 1200);

@@ -29,6 +29,49 @@ export function beep(count = 1, freq = 880) {
   }
 }
 
+/** A short pip for the countdown. */
+export function pip(high = false) {
+  beep(1, high ? 1320 : 1000);
+}
+
+/** The end-of-game buzzer: loud, rough and long enough to be heard across the hall. */
+export function buzzer() {
+  if (!ctx) return;
+  const c = ctx;
+  const t0 = c.currentTime;
+  for (const f of [220, 223]) {
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.value = f;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.5, t0 + 0.03);
+    gain.gain.setValueAtTime(0.5, t0 + 1.1);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.4);
+    osc.connect(gain).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0 + 1.45);
+  }
+}
+
+/** The "go" tone at the end of a changeover: one long, higher note. */
+export function goTone() {
+  if (!ctx) return;
+  const c = ctx;
+  const t0 = c.currentTime;
+  const osc = c.createOscillator();
+  const gain = c.createGain();
+  osc.type = 'square';
+  osc.frequency.value = 880;
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(0.35, t0 + 0.02);
+  gain.gain.setValueAtTime(0.35, t0 + 0.55);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.8);
+  osc.connect(gain).connect(c.destination);
+  osc.start(t0);
+  osc.stop(t0 + 0.85);
+}
+
 let lock: any = null;
 export async function keepAwake(on: boolean) {
   try {
