@@ -298,7 +298,7 @@ function TimerPanel({ t, onPresent }: { t: TimerApi; onPresent: () => void }) {
 function Present({ session, round, t, onClose }: { session: Session; round: Round | undefined; t: TimerApi; onClose: () => void }) {
   const names = (ids: string[]) => ids.map((id) => playerName(session, id)).join(' & ');
   const scored = session.rounds
-    .filter((r) => r.number < (round?.number ?? 0) && r.matches.some((m) => m.scoreA !== null || m.scoreB !== null))
+    .filter((r) => r.matches.some((m) => m.scoreA !== null || m.scoreB !== null))
     .sort((x, y) => y.number - x.number);
   return (
     <div class="present">
