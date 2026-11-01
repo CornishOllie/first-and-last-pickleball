@@ -77,23 +77,36 @@ async function seedAll() {
     const d = new Date(today); d.setDate(d.getDate() - 7 * w);
     const date = d.toISOString().slice(0, 10);
     const sid = crypto.randomUUID();
-    await api('/rest/v1/play_sessions', 'POST', { id: sid, name: `DEMO Thursday night ${date}`, session_date: date, ended: true, state: {} });
     const pool = [...adults];
     const here = [];
     const count = 8 + rnd(5);
     while (here.length < count) here.push(pool.splice(rnd(pool.length), 1)[0]);
     const att = here.map((n, i) => ({ session_id: sid, member_id: byName[n], status: i === 0 && w % 3 === 0 ? 'walk_in' : 'attended' }));
     for (const n of pool.slice(0, 2)) att.push({ session_id: sid, member_id: byName[n], status: rnd(2) ? 'no_show' : 'cancelled' });
-    await api('/rest/v1/play_attendance', 'POST', att);
     const games = [];
+    const rounds = [];
     for (let round = 1; round <= 6; round++) {
       const order = [...here].sort(() => rnd(3) - 1);
+      const matches = [];
       for (let c = 0; c < Math.floor(order.length / 4); c++) {
-        const q = order.slice(c * 4, c * 4 + 4).map((n) => byName[n]);
+        const q = order.slice(c * 4, c * 4 + 4);
         const a = rnd(2) ? 11 : rnd(10); const b = a === 11 ? rnd(10) : 11;
-        games.push({ session_id: sid, round_no: round, court: c + 1, a1: q[0], a2: q[1], b1: q[2], b2: q[3], score_a: a, score_b: b });
+        const ids = q.map((n) => byName[n]);
+        games.push({ session_id: sid, round_no: round, court: c + 1, a1: ids[0], a2: ids[1], b1: ids[2], b2: ids[3], score_a: a, score_b: b });
+        matches.push({ court: c + 1, a: [q[0], q[1]], b: [q[2], q[3]], scoreA: a, scoreB: b });
       }
+      rounds.push({ number: round, matches, sitting: order.slice(matches.length * 4) });
     }
+    // A full session state, so opening a DEMO night in the host app shows the night as it was played.
+    const pid = (n) => 'd' + n.split(' ')[0].toLowerCase();
+    const state = {
+      id: sid, name: `DEMO Thursday night ${date}`, date, ended: true, pairs: [], ratings: {},
+      settings: { format: 'mixer', courts: 4, gameMinutes: 12, changeoverMinutes: 3, preferMixed: false, balanceLevels: false },
+      players: here.map((n) => ({ id: pid(n), name: n, gender: people.find((x) => x[0] === n)[1], level: 0, active: true, joinedRound: 1, memberId: byName[n] })),
+      rounds: rounds.map((r) => ({ number: r.number, sitting: r.sitting.map(pid), matches: r.matches.map((m) => ({ court: m.court, a: m.a.map(pid), b: m.b.map(pid), scoreA: m.scoreA, scoreB: m.scoreB })) })),
+    };
+    await api('/rest/v1/play_sessions', 'POST', { id: sid, name: state.name, session_date: date, ended: true, state });
+    await api('/rest/v1/play_attendance', 'POST', att);
     await api('/rest/v1/play_games', 'POST', games);
   }
   console.log(`Seeded ${people.length} demo players, 8 nights. Host login: host${DOMAIN}. Player logins: sam, kit (stats off), jo (junior, no parent OK).`);
