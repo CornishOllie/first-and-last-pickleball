@@ -325,7 +325,7 @@ function ScoreRow({ session, round, m, onScore }: { session: Session; round: Rou
   const bWin = m.scoreA !== null && m.scoreB !== null && m.scoreB > m.scoreA;
   const both = m.scoreA !== null && m.scoreB !== null;
   const status = both ? (m.scoreA === m.scoreB ? 'Saved: a draw' : `Saved: ${names(aWin ? m.a : m.b)} won ${Math.max(m.scoreA!, m.scoreB!)} to ${Math.min(m.scoreA!, m.scoreB!)}`)
-    : m.scoreA !== null || m.scoreB !== null ? 'Add the other score and it saves.' : 'Type both scores. They save as you type.';
+    : m.scoreA !== null || m.scoreB !== null ? 'Add the other score and it saves.' : 'Tap the boxes on the right and type both scores. They save as you type.';
   const done = (e: KeyboardEvent) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); };
   return (
     <div class="match">
@@ -333,14 +333,14 @@ function ScoreRow({ session, round, m, onScore }: { session: Session; round: Rou
       <div>
         <div class={`side ${aWin ? 'win' : ''}`}>
           <div class="names">{names(m.a)}</div>
-          <input type="number" inputMode="numeric" min={0} aria-label={`Score for ${names(m.a)}`} value={m.scoreA ?? ''}
+          <input type="number" inputMode="numeric" min={0} placeholder="score" aria-label={`Score for ${names(m.a)}`} value={m.scoreA ?? ''}
             enterKeyHint="done" onKeyDown={done}
             onInput={(e) => onScore(m.court, num((e.target as HTMLInputElement).value), m.scoreB)} />
         </div>
         <div class="vs">versus</div>
         <div class={`side ${bWin ? 'win' : ''}`}>
           <div class="names">{names(m.b)}</div>
-          <input type="number" inputMode="numeric" min={0} aria-label={`Score for ${names(m.b)}`} value={m.scoreB ?? ''}
+          <input type="number" inputMode="numeric" min={0} placeholder="score" aria-label={`Score for ${names(m.b)}`} value={m.scoreB ?? ''}
             enterKeyHint="done" onKeyDown={done}
             onInput={(e) => onScore(m.court, m.scoreA, num((e.target as HTMLInputElement).value))} />
         </div>

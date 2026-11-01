@@ -88,3 +88,5 @@
 .play .seg button.on { background: var(--sea); color: var(--paper); }
 .play .mem input[type=text], .play .mem input[type=email] { width: 100%; }
 .play .scored { color: var(--green, #2f6b3f); font-weight: 600; }
+.play .side input::placeholder { font-size: 0.72rem; font-weight: 500; color: var(--sea-light, #6a9aa6); }
+.play .side { grid-template-columns: 1fr 5rem; }
