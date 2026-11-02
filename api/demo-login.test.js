@@ -9,10 +9,11 @@ const run = async (handler, { method = 'POST', body, ip = '1.1.1.1' } = {}) => {
   await handler({ method, body, headers: { 'x-forwarded-for': ip } }, res);
   return out;
 };
-function fake({ status = 200 } = {}) {
+function fake({ status = 200, realRows = [] } = {}) {
   const calls = [];
   const f = async (url, init = {}) => {
     calls.push({ url: String(url), body: init.body ? JSON.parse(init.body) : null });
+    if (String(url).includes('/rest/v1/play_members?')) return { ok: true, status: 200, json: async () => realRows };
     if (String(url).endsWith('/auth/v1/admin/generate_link')) {
       return { ok: status < 300, status, json: async () => ({ action_link: 'https://x.supabase.co/auth/v1/verify?token=SECRETLINK', email_otp: '123456', hashed_token: 'hashed-abc', verification_type: 'magiclink' }) };
     }
@@ -46,8 +47,9 @@ test('each listed person gets a token for their own demo.invalid account, and on
     const out = await run(makeHandler({ env: ENV, fetchFn: f }), { body: { who } });
     assert.equal(out.status, 200);
     assert.deepEqual(out.body, { email, token_hash: 'hashed-abc' });
-    assert.equal(calls.length, 1);
-    assert.deepEqual(calls[0].body, { type: 'magiclink', email });
+    const gen = calls.filter((c) => c.url.endsWith('/auth/v1/admin/generate_link'));
+    assert.equal(gen.length, 1);
+    assert.deepEqual(gen[0].body, { type: 'magiclink', email });
     assert.equal(out.headers['Cache-Control'], 'no-store');
   }
 });
@@ -72,7 +74,8 @@ test('an email sent by the client is never used', async () => {
   assert.equal(a.body.email, 'sam@demo.invalid');
   assert.equal((await run(h, { body: { email: 'victim@gmail.com' } })).status, 400);
   assert.equal((await run(h, { body: { who: 'victim@gmail.com' } })).status, 400);
-  assert.ok(calls.every((c) => c.body.email.endsWith('@demo.invalid')));
+  const gen = calls.filter((c) => c.url.endsWith('/auth/v1/admin/generate_link'));
+  assert.ok(gen.length > 0 && gen.every((c) => c.body.email.endsWith('@demo.invalid')));
 });
 
 test('the action link, the one-time code and the service key never appear in a response', async () => {
@@ -86,7 +89,9 @@ test('the action link, the one-time code and the service key never appear in a r
 test('Supabase failures are reported, not hidden', async () => {
   _resetForTests();
   assert.equal((await run(makeHandler({ env: ENV, fetchFn: fake({ status: 500 }).f }), { body: { who: 'sam' } })).status, 502);
-  const noToken = async () => ({ ok: true, status: 200, json: async () => ({ action_link: 'x' }) });
+  const noToken = async (url) => ({ ok: true, status: 200, json: async () => (String(url).includes('/rest/v1/') ? [] : { action_link: 'x' }) });
+  const checkDown = async () => ({ ok: false, status: 500, json: async () => ({}) });
+  assert.equal((await run(makeHandler({ env: ENV, fetchFn: checkDown }), { body: { who: 'sam' } })).status, 502);
   assert.equal((await run(makeHandler({ env: ENV, fetchFn: noToken }), { body: { who: 'sam' } })).status, 502);
   const boom = async () => { throw new Error('down'); };
   assert.equal((await run(makeHandler({ env: ENV, fetchFn: boom }), { body: { who: 'sam' } })).status, 502);
@@ -113,4 +118,14 @@ test('the limit lifts after the window', async () => {
   assert.equal((await run(h, { body: { who: 'sam' }, ip: '9.9.9.9' })).status, 429);
   t += 10 * 60 * 1000 + 1;
   assert.equal((await run(h, { body: { who: 'sam' }, ip: '9.9.9.9' })).status, 200);
+});
+
+test('switches itself off if any real (not demo.invalid) email is in the database', async () => {
+  _resetForTests();
+  const { f, calls } = fake({ realRows: [{ id: 'm1' }] });
+  const out = await run(makeHandler({ env: ENV, fetchFn: f }), { body: { who: 'host' } });
+  assert.equal(out.status, 404);
+  assert.ok(!calls.some((c) => c.url.endsWith('/auth/v1/admin/generate_link')), 'must not make a sign-in token');
+  const q = calls.find((c) => c.url.includes('/rest/v1/play_members?'));
+  assert.ok(q && q.url.includes('email=not.like.*%40demo.invalid') && q.url.includes('email=neq.'), q?.url);
 });

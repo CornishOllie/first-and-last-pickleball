@@ -36,10 +36,18 @@ export function makeHandler({ env = process.env, fetchFn = fetch, now = () => Da
     if (!Object.prototype.hasOwnProperty.call(DEMO, who)) return send(400, { error: 'who' });
     const email = DEMO[who];
 
+    const headers = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' };
     try {
+      // Safety catch: the demo host is a host of the real club row. If any real person (an email that is not
+      // made-up) is in the database, demo sign-in switches itself off, even if a preview was left running.
+      const real = await fetchFn(`${env.SUPABASE_URL}/rest/v1/play_members?select=id&email=not.like.*%40demo.invalid&email=neq.&limit=1`, { headers });
+      if (!real.ok) return send(502, { error: 'check' });
+      const rows = await real.json();
+      if (!Array.isArray(rows) || rows.length > 0) return send(404, { error: 'not-found' });
+
       const r = await fetchFn(`${env.SUPABASE_URL}/auth/v1/admin/generate_link`, {
         method: 'POST',
-        headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ type: 'magiclink', email }),
       });
       if (!r.ok) return send(502, { error: 'link' });

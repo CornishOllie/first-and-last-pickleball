@@ -1,0 +1,2 @@
+# Tests are not functions. Vercel treats every file in api/ as one, so keep these out of deploys.
+api/*.test.js
