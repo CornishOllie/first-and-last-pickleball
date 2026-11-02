@@ -2,7 +2,8 @@
 // Everything goes through database functions that apply the privacy rules, never straight to the tables.
 import { supabase } from './auth.ts';
 
-export interface MyRecord { id: string; name: string; show_stats: boolean; is_junior: boolean; guardian_ok: boolean }
+/** The player's record in one club. A player in several clubs has one of these per club. */
+export interface MyRecord { id: string; name: string; show_stats: boolean; is_junior: boolean; guardian_ok: boolean; club_id: string; club_slug: string; club_name: string }
 export interface MyStats {
   games: { games: number; won: number; lost: number; drawn: number; points_for: number; points_against: number };
   attendance: { attended: number; no_shows: number; cancelled: number };
@@ -36,30 +37,31 @@ export async function requestLink(email: string): Promise<'sent' | 'too-many' | 
   }
 }
 
-export async function linkMe(): Promise<MyRecord | null> {
-  if (!supabase) return null;
+/** Links the sign-in to the player's record in every club that has their email, and returns them all. */
+export async function linkMe(): Promise<MyRecord[]> {
+  if (!supabase) return [];
   const { data, error } = await supabase.rpc('play_link_me');
   if (error) throw error;
-  return ((data as MyRecord[]) ?? [])[0] ?? null;
+  return (data as MyRecord[]) ?? [];
 }
 
-export async function myStats(since: string | null): Promise<MyStats | null> {
+export async function myStats(club: string, since: string | null): Promise<MyStats | null> {
   if (!supabase) return null;
-  const { data, error } = await supabase.rpc('play_my_stats', { p_since: since });
+  const { data, error } = await supabase.rpc('play_my_stats', { p_club: club, p_since: since });
   if (error) throw error;
   return (data as MyStats | null) ?? null;
 }
 
-export async function leaderboard(since: string | null): Promise<BoardRow[]> {
+export async function leaderboard(club: string, since: string | null): Promise<BoardRow[]> {
   if (!supabase) return [];
-  const { data, error } = await supabase.rpc('play_leaderboard', { p_since: since, p_min_games: 6 });
+  const { data, error } = await supabase.rpc('play_leaderboard', { p_club: club, p_since: since, p_min_games: 6 });
   if (error) throw error;
   return (data as BoardRow[]) ?? [];
 }
 
-export async function setVisibility(show: boolean) {
+export async function setVisibility(club: string, show: boolean) {
   if (!supabase) return;
-  const { error } = await supabase.rpc('play_set_visibility', { p_show: show });
+  const { error } = await supabase.rpc('play_set_visibility', { p_club: club, p_show: show });
   if (error) throw error;
 }
 

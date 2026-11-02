@@ -1,5 +1,5 @@
 -- Play night tool, version 2: player records, attendance, games, and player-facing stats.
--- Run after play-schema.sql. Safe to run again.
+-- Run after play-schema.sql. Do not run again after play-schema-v3.sql: v3 replaces these functions with per-club versions.
 --
 -- Privacy rules live here, not just on screen:
 --   * Only hosts can read or write the tables directly.

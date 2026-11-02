@@ -26,7 +26,7 @@ const svc = (path, opts = {}) => call(path, { ...opts, key: SVC, token: SVC });
 
 const stamp = Date.now();
 const pw = `T3st-${stamp}-pw!`;
-const created = { users: [], sessions: [] };
+const created = { users: [], sessions: [], clubs: [] };
 const mkUser = async (label) => {
   const email = `t-${label}-${stamp}@example.test`;
   const r = await svc('/auth/v1/admin/users', { method: 'POST', body: { email, password: pw, email_confirm: true } });
@@ -68,15 +68,19 @@ try {
   for (const n of ['ann', 'bob', 'cat', 'dan', 'eve']) U[n] = await mkUser(n);
   const stranger = await mkUser('stranger');
   const notHost = await mkUser('nothost');
-  const h = (x) => host.token;
-  await svc('/rest/v1/play_hosts', { method: 'POST', body: { user_id: host.id, name: 'Test host' } });
+  const hostB = await mkUser('hostb');
+  // two throw-away clubs: A is where most checks run, B is another club that must never see A's rows
+  const CA = crypto.randomUUID(), CB = crypto.randomUUID();
+  created.clubs.push(CA, CB);
+  await svc('/rest/v1/clubs', { method: 'POST', body: [{ id: CA, slug: `t-a-${stamp}`, name: `T Club A ${stamp}` }, { id: CB, slug: `t-b-${stamp}`, name: `T Club B ${stamp}` }] });
+  await svc('/rest/v1/club_roles', { method: 'POST', body: [{ club_id: CA, user_id: host.id, role: 'host' }, { club_id: CB, user_id: hostB.id, role: 'host' }] });
 
   // ---------- sessions and publishing ----------
   const sidA = crypto.randomUUID(), sidB = crypto.randomUUID();
   created.sessions.push(sidA, sidB);
   let r = await call('/rest/v1/play_sessions', { method: 'POST', token: host.token, body: [
-    { id: sidA, name: 'Test night A', session_date: '2026-09-01', ended: true, state: {} },
-    { id: sidB, name: 'Test night B', session_date: '2099-01-01', ended: false, state: {} },
+    { id: sidA, club_id: CA, name: 'Test night A', session_date: '2026-09-01', ended: true, state: {} },
+    { id: sidB, club_id: CA, name: 'Test night B', session_date: '2099-01-01', ended: false, state: {} },
   ] });
   ok('host can save sessions', r.status === 201, JSON.stringify(r.body).slice(0, 120));
 
@@ -113,7 +117,7 @@ try {
   await patch('eve', { email: U.eve.email, is_junior: true, guardian_ok: true });
 
   // ---------- locked down tables ----------
-  for (const t of ['play_members', 'play_sessions', 'play_attendance', 'play_games', 'play_ratings', 'play_hosts']) {
+  for (const t of ['play_members', 'play_sessions', 'play_attendance', 'play_games', 'play_ratings', 'club_roles']) {
     const x = await call(`/rest/v1/${t}?select=*`, { token: U.ann.token });
     ok(`a player can not read ${t} directly`, Array.isArray(x.body) ? x.body.length === 0 : x.status >= 400, `${x.status}`);
     const y = await call(`/rest/v1/${t}?select=*`);
@@ -122,15 +126,15 @@ try {
   r = await call(`/rest/v1/play_members?id=eq.${map.bob}`, { method: 'PATCH', token: U.ann.token, body: { show_stats: false } });
   const bobRow = await svc(`/rest/v1/play_members?id=eq.${map.bob}&select=show_stats`);
   ok('a player can not edit someone else', bobRow.body[0].show_stats === true);
-  r = await call('/rest/v1/play_hosts', { method: 'POST', token: U.ann.token, body: { user_id: U.ann.id, name: 'sneaky' } });
+  r = await call('/rest/v1/club_roles', { method: 'POST', token: U.ann.token, body: { club_id: CA, user_id: U.ann.id, role: 'admin' } });
   ok('a player can not make themselves a host', r.status >= 400);
   for (const fn of ['play_sides']) {
-    r = await rpc(fn, { p_since: null }, U.ann.token);
+    r = await rpc(fn, { p_club: CA, p_since: null }, U.ann.token);
     ok(`${fn} is not callable by players`, r.status >= 400, r.status);
   }
-  r = await rpc('play_host_summary', {}, U.ann.token); ok('player can not see the host summary', r.status >= 400, r.status);
+  r = await rpc('play_host_summary', { p_club: CA }, U.ann.token); ok('player can not see the host summary', r.status >= 400, r.status);
   r = await rpc('play_merge_members', { p_keep: map.ann, p_drop: map.bob }, U.ann.token); ok('player can not merge members', r.status >= 400, r.status);
-  for (const [fn, args] of [['play_my_stats', {}], ['play_leaderboard', {}], ['play_link_me', {}], ['play_set_visibility', { p_show: false }]]) {
+  for (const [fn, args] of [['play_my_stats', { p_club: CA }], ['play_leaderboard', { p_club: CA }], ['play_link_me', {}], ['play_set_visibility', { p_club: CA, p_show: false }]]) {
     r = await rpc(fn, args);
     ok(`signed-out can not call ${fn}`, r.status >= 400, r.status);
   }
@@ -138,9 +142,9 @@ try {
   // ---------- linking ----------
   r = await rpc('play_link_me', {}, stranger.token);
   ok('a stranger (no matching email) links to nothing', Array.isArray(r.body) && r.body.length === 0, JSON.stringify(r.body));
-  r = await rpc('play_my_stats', {}, stranger.token);
+  r = await rpc('play_my_stats', { p_club: CA }, stranger.token);
   ok('a stranger gets no stats', r.body === null);
-  r = await rpc('play_leaderboard', { p_min_games: 1 }, stranger.token);
+  r = await rpc('play_leaderboard', { p_club: CA, p_min_games: 1 }, stranger.token);
   ok('a stranger gets no leaderboard', Array.isArray(r.body) && r.body.length === 0);
   for (const n of ['ann', 'bob', 'cat', 'dan', 'eve']) {
     r = await rpc('play_link_me', {}, U[n].token);
@@ -152,7 +156,7 @@ try {
   ok('the link is stored', mem.body[0].user_id === U.ann.id);
 
   // ---------- my own stats ----------
-  r = await rpc('play_my_stats', {}, U.ann.token);
+  r = await rpc('play_my_stats', { p_club: CA }, U.ann.token);
   const exp = expect('ann');
   const g = r.body?.games ?? {};
   ok('own games, wins, losses match an independent calculation', g.games === exp.games && g.won === exp.won && g.lost === exp.lost && g.points_for === exp.pf && g.points_against === exp.pa, JSON.stringify({ got: g, exp }));
@@ -162,11 +166,11 @@ try {
   ok('partners are listed with a record', r.body.partners.length >= 1 && r.body.partners[0].games >= 1);
   ok('an opted-out partner is shown as "Another player", not by name', !JSON.stringify(r.body.partners).includes('T-Cat') && !JSON.stringify(r.body.partners).includes('T-Dan'));
   ok('recent sessions list only the finished session', r.body.recent.length === 1 && r.body.recent[0].name === 'Test night A');
-  const noShowCheck = await rpc('play_my_stats', {}, U.cat.token);
+  const noShowCheck = await rpc('play_my_stats', { p_club: CA }, U.cat.token);
   ok('an opted-out player still sees their own stats', noShowCheck.body?.games.games === expect('cat').games);
 
   // ---------- leaderboard rules ----------
-  r = await rpc('play_leaderboard', { p_min_games: 1 }, U.ann.token);
+  r = await rpc('play_leaderboard', { p_club: CA, p_min_games: 1 }, U.ann.token);
   const lb = r.body.map((x) => x.name);
   ok('leaderboard includes visible adults', lb.includes(`T-Ann ${stamp}`) && lb.includes(`T-Bob ${stamp}`), JSON.stringify(lb));
   ok('leaderboard hides someone who opted out', !lb.includes(`T-Cat ${stamp}`));
@@ -177,36 +181,36 @@ try {
   ok('the player is marked as me, with correct numbers', annRow?.name === `T-Ann ${stamp}` && annRow.games === exp.games && annRow.won === exp.won, JSON.stringify(annRow));
   const sorted = r.body.every((x, i, a) => i === 0 || a[i - 1].win_pct >= x.win_pct);
   ok('ordered by win percentage', sorted);
-  r = await rpc('play_leaderboard', {}, U.ann.token);
+  r = await rpc('play_leaderboard', { p_club: CA }, U.ann.token);
   ok('the default minimum of 6 games filters the table', r.body.every((x) => x.games >= 6));
-  r = await rpc('play_leaderboard', { p_since: '2099-01-02', p_min_games: 1 }, U.ann.token);
+  r = await rpc('play_leaderboard', { p_club: CA, p_since: '2099-01-02', p_min_games: 1 }, U.ann.token);
   ok('a date filter excludes older games', r.body.length === 0);
-  r = await rpc('play_leaderboard', { p_min_games: 1 }, U.cat.token);
+  r = await rpc('play_leaderboard', { p_club: CA, p_min_games: 1 }, U.cat.token);
   ok('someone who opted out does not see the leaderboard', r.body.length === 0);
-  r = await rpc('play_leaderboard', { p_min_games: 1 }, U.dan.token);
+  r = await rpc('play_leaderboard', { p_club: CA, p_min_games: 1 }, U.dan.token);
   ok('a junior without a parent OK is not on it', !r.body.some((x) => x.name === `T-Dan ${stamp}`));
 
   // ---------- opting out and back in ----------
-  r = await rpc('play_set_visibility', { p_show: false }, U.ann.token);
+  r = await rpc('play_set_visibility', { p_club: CA, p_show: false }, U.ann.token);
   ok('a player can opt out', r.status === 204 || r.status === 200, r.status);
-  r = await rpc('play_leaderboard', { p_min_games: 1 }, U.bob.token);
+  r = await rpc('play_leaderboard', { p_club: CA, p_min_games: 1 }, U.bob.token);
   ok('after opting out, the player disappears from others\' boards', !r.body.some((x) => x.name === `T-Ann ${stamp}`));
-  r = await rpc('play_leaderboard', { p_min_games: 1 }, U.ann.token);
+  r = await rpc('play_leaderboard', { p_club: CA, p_min_games: 1 }, U.ann.token);
   ok('and does not see the board themselves', r.body.length === 0);
-  await rpc('play_set_visibility', { p_show: true }, U.ann.token);
-  r = await rpc('play_leaderboard', { p_min_games: 1 }, U.bob.token);
+  await rpc('play_set_visibility', { p_club: CA, p_show: true }, U.ann.token);
+  r = await rpc('play_leaderboard', { p_club: CA, p_min_games: 1 }, U.bob.token);
   ok('opting back in restores them', r.body.some((x) => x.name === `T-Ann ${stamp}`));
   const bobStill = await svc(`/rest/v1/play_members?id=eq.${map.bob}&select=show_stats`);
   ok('opting out only affects the player who did it', bobStill.body[0].show_stats === true);
 
   // ---------- host summary ----------
-  r = await rpc('play_host_summary', {}, host.token);
+  r = await rpc('play_host_summary', { p_club: CA }, host.token);
   const row = (k) => r.body.find((x) => x.member_id === map[k]);
   ok('host sees no-shows', row('fay')?.no_shows === 1 && row('gus')?.cancelled === 1 && row('ann')?.attended === 1, JSON.stringify(row('fay')));
   ok('host summary matches the games', row('bob').games === expect('bob').games && row('bob').won === expect('bob').won);
 
   // ---------- merge a duplicate ----------
-  const dupe = await call('/rest/v1/play_members', { method: 'POST', token: host.token, body: { name: `T-Annie ${stamp}`, gender: 'F' } });
+  const dupe = await call('/rest/v1/play_members', { method: 'POST', token: host.token, body: { club_id: CA, name: `T-Annie ${stamp}`, gender: 'F' } });
   const dupeId = dupe.body[0].id;
   await svc('/rest/v1/play_attendance', { method: 'POST', body: { session_id: sidB, member_id: dupeId, status: 'attended' } });
   await svc('/rest/v1/play_games', { method: 'POST', body: { session_id: sidA, round_no: 99, court: 1, a1: dupeId, a2: map.bob, b1: map.cat, b2: map.dan, score_a: 11, score_b: 2 } });
@@ -231,18 +235,92 @@ try {
   ok('other players\' games are kept', after.body.length === before.body.length);
   const dnull = await svc(`/rest/v1/play_games?session_id=eq.${sidA}&select=a1,a2,b1,b2`);
   ok('an erased person is removed from the games, not left as an id', !JSON.stringify(dnull.body).includes(map.fay));
+
+  // ---------- clubs are kept apart ----------
+  const asB = (path, opts = {}) => call(path, { ...opts, token: hostB.token });
+  r = await asB(`/rest/v1/play_members?club_id=eq.${CA}&select=id`);
+  ok('a host of another club can not read this club\'s members', Array.isArray(r.body) && r.body.length === 0, JSON.stringify(r.body).slice(0, 80));
+  r = await asB(`/rest/v1/play_sessions?id=eq.${sidA}&select=id`);
+  ok('a host of another club can not read this club\'s sessions', Array.isArray(r.body) && r.body.length === 0);
+  r = await asB(`/rest/v1/play_games?session_id=eq.${sidA}&select=id`);
+  ok('a host of another club can not read this club\'s games', Array.isArray(r.body) && r.body.length === 0);
+  r = await asB(`/rest/v1/play_attendance?session_id=eq.${sidA}&select=member_id`);
+  ok('a host of another club can not read this club\'s attendance', Array.isArray(r.body) && r.body.length === 0);
+  await asB(`/rest/v1/play_members?id=eq.${map.bob}`, { method: 'PATCH', body: { name: 'hijacked' } });
+  const bobName = await svc(`/rest/v1/play_members?id=eq.${map.bob}&select=name`);
+  ok('a host of another club can not edit this club\'s members', bobName.body[0].name === `T-Bob ${stamp}`);
+  await asB(`/rest/v1/play_members?id=eq.${map.bob}`, { method: 'DELETE' });
+  const bobThere = await svc(`/rest/v1/play_members?id=eq.${map.bob}&select=id`);
+  ok('a host of another club can not erase this club\'s members', bobThere.body.length === 1);
+  r = await rpc('play_publish_facts', { p_session: sidA, p_players: players, p_games: games }, hostB.token);
+  ok('a host of another club can not publish this club\'s session', r.status >= 400, r.status);
+  r = await rpc('play_host_summary', { p_club: CA }, hostB.token);
+  ok('a host of another club can not see this club\'s summary', r.status >= 400, r.status);
+  r = await rpc('play_merge_members', { p_keep: map.ann, p_drop: map.bob }, hostB.token);
+  ok('a host of another club can not merge this club\'s members', r.status >= 400, r.status);
+  const sidX = crypto.randomUUID(); created.sessions.push(sidX);
+  r = await asB('/rest/v1/play_sessions', { method: 'POST', body: { id: sidX, club_id: CA, name: 'sneaky', session_date: '2026-09-02', ended: false, state: {} } });
+  ok('a host can not create a session in another club', r.status >= 400, r.status);
+  r = await asB(`/rest/v1/play_sessions?id=eq.${sidA}`, { method: 'PATCH', body: { club_id: CB } });
+  const stillA = await svc(`/rest/v1/play_sessions?id=eq.${sidA}&select=club_id`);
+  ok('a host of another club can not move a session into their club', stillA.body[0].club_id === CA);
+
+  // a member of club B, played in club B, with the same email as Ann
+  const sidC = crypto.randomUUID(); created.sessions.push(sidC);
+  r = await asB('/rest/v1/play_members', { method: 'POST', body: { club_id: CB, name: `T-Ann B ${stamp}`, email: U.ann.email } });
+  ok('the same email can be a member of two clubs', r.status === 201, JSON.stringify(r.body).slice(0, 120));
+  const annB = r.body[0].id;
+  r = await call('/rest/v1/play_attendance', { method: 'POST', token: host.token, body: { session_id: sidA, member_id: annB, status: 'attended' } });
+  ok('a host can not put another club\'s member into their session', r.status >= 400, r.status);
+  await asB('/rest/v1/play_sessions', { method: 'POST', body: { id: sidC, club_id: CB, name: 'Test night C', session_date: '2026-09-03', ended: true, state: {} } });
+  const playersC = [
+    { key: 'ann', name: `T-Ann B ${stamp}`, gender: 'F', member_id: annB, status: 'attended' },
+    { key: 'bob', name: `T-Bob ${stamp}`, gender: 'M', member_id: map.bob, status: 'attended' },
+    { key: 'cat', name: `T-Cat C ${stamp}`, gender: 'F', status: 'attended' },
+    { key: 'dan', name: `T-Dan C ${stamp}`, gender: 'M', status: 'attended' },
+  ];
+  r = await rpc('play_publish_facts', { p_session: sidC, p_players: playersC, p_games: gamesB }, hostB.token);
+  ok('club B can publish its own night', r.status === 200, JSON.stringify(r.body).slice(0, 120));
+  ok('a member id from another club is ignored when publishing', r.body.bob && r.body.bob !== map.bob, JSON.stringify(r.body));
+  const bobC = await svc(`/rest/v1/play_members?id=eq.${r.body.bob}&select=club_id`);
+  ok('the stand-in is made inside club B', bobC.body[0]?.club_id === CB);
+  r = await rpc('play_link_me', {}, U.ann.token);
+  ok('Ann is linked in both clubs', Array.isArray(r.body) && r.body.length === 2 && new Set(r.body.map((x) => x.club_id)).size === 2, JSON.stringify(r.body).slice(0, 200));
+  r = await rpc('play_my_stats', { p_club: CB }, U.ann.token);
+  ok('Ann\'s club B stats count only club B games', r.body?.games.games === 1 && r.body.games.won === 1, JSON.stringify(r.body?.games));
+  r = await rpc('play_my_stats', { p_club: CA }, U.ann.token);
+  ok('Ann\'s club A stats are unchanged by club B', r.body?.games.games === exp.games + 1, JSON.stringify(r.body?.games));
+  r = await rpc('play_leaderboard', { p_club: CB, p_min_games: 1 }, U.ann.token);
+  ok('club B\'s leaderboard lists only club B people', r.body.length > 0 && r.body.every((x) => !x.name.startsWith('T-Eve') && !x.name.startsWith('T-Ann ' + stamp)), JSON.stringify(r.body.map((x) => x.name)));
+  r = await rpc('play_leaderboard', { p_club: CB, p_min_games: 1 }, U.eve.token);
+  ok('someone not in club B gets no club B leaderboard', Array.isArray(r.body) && r.body.length === 0);
+  r = await rpc('play_merge_members', { p_keep: map.ann, p_drop: annB }, host.token);
+  ok('members of different clubs can not be merged', r.status >= 400, r.status);
+
+  // two people with the same name in one club
+  const t1 = await call('/rest/v1/play_members', { method: 'POST', token: host.token, body: { club_id: CA, name: `T-Twin ${stamp}` } });
+  const t2 = await call('/rest/v1/play_members', { method: 'POST', token: host.token, body: { club_id: CA, name: `T-Twin ${stamp}` } });
+  ok('two people can share a name', t1.status === 201 && t2.status === 201, `${t1.status} ${t2.status}`);
+  const sidT = crypto.randomUUID(); created.sessions.push(sidT);
+  await call('/rest/v1/play_sessions', { method: 'POST', token: host.token, body: { id: sidT, club_id: CA, name: 'Twin night', session_date: '2026-09-04', ended: true, state: {} } });
+  r = await rpc('play_publish_facts', { p_session: sidT, p_players: [{ key: 'x', name: `T-Twin ${stamp}`, gender: '', member_id: t2.body[0].id, status: 'attended' }], p_games: [] }, host.token);
+  ok('saving a night keeps the right one of two same-named people', r.body?.x === t2.body[0].id, JSON.stringify(r.body));
 } catch (e) {
   failed++;
   console.log('FAIL test run crashed:', e.message);
 } finally {
   for (const id of created.sessions) await svc(`/rest/v1/play_sessions?id=eq.${id}`, { method: 'DELETE' });
-  await svc(`/rest/v1/play_members?name=like.T-*%20${stamp}`, { method: 'DELETE' });
-  for (const id of created.users) {
-    await svc(`/rest/v1/play_hosts?user_id=eq.${id}`, { method: 'DELETE' });
-    await svc(`/auth/v1/admin/users/${id}`, { method: 'DELETE' });
+  for (const id of created.clubs) {
+    await svc(`/rest/v1/play_ratings?club_id=eq.${id}`, { method: 'DELETE' });
+    await svc(`/rest/v1/play_sessions?club_id=eq.${id}`, { method: 'DELETE' });
+    await svc(`/rest/v1/play_members?club_id=eq.${id}`, { method: 'DELETE' });
+    await svc(`/rest/v1/clubs?id=eq.${id}`, { method: 'DELETE' });
   }
+  await svc(`/rest/v1/play_members?name=like.T-*%20${stamp}`, { method: 'DELETE' });
+  for (const id of created.users) await svc(`/auth/v1/admin/users/${id}`, { method: 'DELETE' });
   const left = await svc(`/rest/v1/play_members?name=like.T-*%20${stamp}&select=id`);
-  console.log(left.body.length === 0 ? 'cleaned up test users and rows' : 'WARNING: test rows left behind');
+  const leftClubs = await svc(`/rest/v1/clubs?slug=like.t-*-${stamp}&select=id`);
+  console.log(left.body.length === 0 && leftClubs.body.length === 0 ? 'cleaned up test users and rows' : 'WARNING: test rows left behind');
 }
 console.log(failed ? `\n${failed} FAILED` : '\nall checks passed');
 process.exit(failed ? 1 : 0);

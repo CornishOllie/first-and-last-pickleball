@@ -3,6 +3,7 @@ import './play.css';
 import { daysAgo, leaderboard, linkMe, myStats, playerBackendOn, playerSignOut, requestLink, sessionInfo, setVisibility } from './playerApi.ts';
 import type { BoardRow, MyRecord, MyStats } from './playerApi.ts';
 import CodeEntry from './CodeEntry.tsx';
+import { CLUB } from '../club.ts';
 
 type Period = 'all' | '90';
 const pct = (won: number, games: number) => (games ? `${Math.round((100 * won) / games)}%` : '-');
@@ -37,7 +38,11 @@ export default function PlayerApp() {
   const on = playerBackendOn();
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState<string | null>(null);
-  const [me, setMe] = useState<MyRecord | null>(null);
+  // One record per club the player belongs to. This site's club is shown first.
+  const [records, setRecords] = useState<MyRecord[]>([]);
+  const [clubId, setClubId] = useState<string>(CLUB.id);
+  const me = records.find((r) => r.club_id === clubId) ?? null;
+  const setMe = (r: MyRecord) => setRecords((cur) => cur.map((x) => (x.club_id === r.club_id ? r : x)));
   const [stats, setStats] = useState<MyStats | null>(null);
   const [board, setBoard] = useState<BoardRow[]>([]);
   const [period, setPeriod] = useState<Period>('all');
@@ -52,7 +57,12 @@ export default function PlayerApp() {
       try {
         const s = await sessionInfo();
         setEmail(s?.email ?? null);
-        if (s) setMe(await linkMe());
+        if (s) {
+          // this site's club first, then the rest by name
+          const list = (await linkMe()).sort((x, y) => Number(y.club_id === CLUB.id) - Number(x.club_id === CLUB.id));
+          setRecords(list);
+          if (list.length && !list.some((r) => r.club_id === CLUB.id)) setClubId(list[0].club_id);
+        }
       } catch { setErr('Could not load your details. Try again in a moment.'); }
       setLoading(false);
     })();
@@ -62,13 +72,13 @@ export default function PlayerApp() {
     if (!me) return;
     (async () => {
       try {
-        const [st, lb] = await Promise.all([myStats(since), leaderboard(since)]);
+        const [st, lb] = await Promise.all([myStats(me.club_id, since), leaderboard(me.club_id, since)]);
         setStats(st);
         setBoard(lb);
         setErr('');
       } catch { setErr('Could not load your stats. Try again in a moment.'); }
     })();
-  }, [me?.id, period, me?.show_stats]);
+  }, [me?.id, me?.club_id, period, me?.show_stats]);
 
   if (!on) return <div class="play"><h1>Your stats</h1><div class="note">Player stats are not switched on yet.</div></div>;
   if (loading) return <div class="play"><p class="muted">Loading...</p></div>;
@@ -95,10 +105,21 @@ export default function PlayerApp() {
   return (
     <div class="play">
       <div class="spread">
-        <div><h1>Hi {firstName(me.name)}</h1><span class="muted">Your numbers from club play nights</span></div>
+        <div><h1>Hi {firstName(me.name)}</h1><span class="muted">Your numbers from {me.club_name} play nights</span></div>
         <button class="b small ghost" onClick={() => playerSignOut().then(() => location.reload())}>Sign out</button>
       </div>
       {err && <div class="error">{err}</div>}
+      {records.length > 1 && (
+        <div class="seg" role="tablist" aria-label="Club" style="margin:1rem 0 0">
+          {records.map((r) => (
+            <button key={r.club_id} class={r.club_id === clubId ? 'on' : ''} role="tab" aria-selected={r.club_id === clubId}
+              onClick={() => { setStats(null); setBoard([]); setClubId(r.club_id); }}>{r.club_name}</button>
+          ))}
+        </div>
+      )}
+      {!records.some((r) => r.club_id === CLUB.id) && (
+        <div class="note" style="margin-top:1rem">You are not on {CLUB.name}'s list yet, so this shows your other club. Ask a host here to add your email.</div>
+      )}
 
       <div class="seg" role="tablist" style="margin:1rem 0">
         <button class={period === 'all' ? 'on' : ''} role="tab" aria-selected={period === 'all'} onClick={() => setPeriod('all')}>All time</button>
@@ -140,7 +161,7 @@ export default function PlayerApp() {
           <h3>Recent nights</h3>
           <table>
             <thead><tr><th class="l">Date</th><th class="l">Night</th><th>Games</th><th>Won</th></tr></thead>
-            <tbody>{stats.recent.map((r) => <tr key={r.date + r.name}><td class="l">{r.date}</td><td class="l">{r.name}</td><td>{r.games}</td><td>{r.won}</td></tr>)}</tbody>
+            <tbody>{stats.recent.map((r) => <tr key={r.date + r.name}><td class="l">{r.date}</td><td class="l">{r.name.replace(r.date, "").trim() || r.name}</td><td>{r.games}</td><td>{r.won}</td></tr>)}</tbody>
           </table>
         </div>
       )}
@@ -172,7 +193,7 @@ export default function PlayerApp() {
           <input type="checkbox" checked={me.show_stats} disabled={busy} onChange={async (e) => {
             const show = (e.target as HTMLInputElement).checked;
             setBusy(true);
-            try { await setVisibility(show); setMe({ ...me, show_stats: show }); } catch { setErr('Could not save that. Try again.'); }
+            try { await setVisibility(me.club_id, show); setMe({ ...me, show_stats: show }); } catch { setErr('Could not save that. Try again.'); }
             setBusy(false);
           }} />
           <span><strong>Show me on the club leaderboard</strong><br />
@@ -185,7 +206,7 @@ export default function PlayerApp() {
           </p>
         )}
         <p class="small muted" style="margin:.7rem 0 0">
-          We keep your name, email, which nights you came to, and the scores of your games. Only hosts and you can see your attendance. To see everything we hold, or have it deleted, email <a href="mailto:hello@firstandlastpickleball.co.uk">hello@firstandlastpickleball.co.uk</a>. More in our <a href="/privacy">privacy notice</a>.
+          We keep your name, email, which nights you came to, and the scores of your games. Only hosts and you can see your attendance. To see everything we hold, or have it deleted, email <a href={`mailto:${CLUB.contactEmail}`}>{CLUB.contactEmail}</a>. More in our <a href="/privacy">privacy notice</a>.
         </p>
       </div>
     </div>

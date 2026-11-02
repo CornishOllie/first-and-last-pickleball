@@ -1,6 +1,7 @@
 // Optional cloud sign-in for hosts (Supabase email links). Only active when PUBLIC_PLAY_CLOUD=on.
 // Without it the tool runs on this device only.
 import { createClient } from '@supabase/supabase-js';
+import { CLUB } from '../club.ts';
 
 const url = import.meta.env.PUBLIC_SUPABASE_URL as string | undefined;
 const key = import.meta.env.PUBLIC_SUPABASE_ANON_KEY as string | undefined;
@@ -22,7 +23,8 @@ export async function currentHost(): Promise<HostInfo | 'not-host' | null> {
   const { data } = await supabase.auth.getSession();
   const user = data.session?.user;
   if (!user) return null;
-  const { data: rows, error } = await supabase.from('play_hosts').select('user_id').eq('user_id', user.id);
+  // A host or admin of this site's club. Being a host at another club does not count here.
+  const { data: rows, error } = await supabase.from('club_roles').select('role').eq('club_id', CLUB.id).eq('user_id', user.id);
   if (error || !rows || rows.length === 0) return 'not-host';
   return { email: user.email ?? '' };
 }

@@ -2,7 +2,8 @@
 // project with clearly fake people (emails end @demo.invalid) and fake sessions (names start "DEMO").
 //   node scripts/demo.mjs seed     make the fake players, nights and games
 //   node scripts/demo.mjs open host|sam|kit|jo    open a sign-in link in the browser (http://localhost:4321)
-//   node scripts/demo.mjs clean    remove everything demo (members, sessions, games, demo accounts)
+//   node scripts/demo.mjs clean    remove everything demo (members, sessions, games, demo accounts, the demo club)
+// Two clubs: F&L (the real club row, demo people only) and "DEMO Riverside", a fake second club. Sam is in both.
 // Needs the Supabase CLI logged in. Never prints keys or sign-in links.
 import { execSync } from 'node:child_process';
 
@@ -20,6 +21,13 @@ const api = async (path, method = 'GET', body) => {
 };
 
 const DOMAIN = '@demo.invalid';
+const FL = '8c272569-0e18-46a7-be5b-e9dbaef31b1a';
+const RIVER = 'ef4da995-8d42-4629-bec2-ccb982b955ce';
+// Riverside's own people, plus Sam (same email as at F&L, so one sign-in sees both clubs).
+const riverPeople = [
+  ['Sam Carter', 'M', 'sam'], ['Alys Pender', 'F', 'alys'], ['Gwen Tonkin', 'F', 'gwen'], ['Jack Uren', 'M', 'jack'],
+  ['Nell Rodda', 'F', 'nell'], ['Will Opie', 'M', 'will'], ['Tamsin Hosken', 'F', 'tamsin'], ['Ned Bray', 'M', 'ned'],
+];
 const people = [
   // name, gender, flags. sam, kit and jo get sign-ins.
   ['Sam Carter', 'M', {}], ['Kit Morgan', 'F', { show_stats: false }], ['Jo Trelawny', 'F', { is_junior: true }],
@@ -54,32 +62,26 @@ async function clean() {
   const hostId = await findUser(`host${DOMAIN}`);
   // Nights the demo host started while trying the tool.
   if (hostId) await api(`/rest/v1/play_sessions?created_by=eq.${hostId}`, 'DELETE');
+  // The whole demo club.
+  for (const t of ['play_ratings', 'play_sessions', 'play_members']) await api(`/rest/v1/${t}?club_id=eq.${RIVER}`, 'DELETE');
+  await api(`/rest/v1/clubs?id=eq.${RIVER}`, 'DELETE');
   await api(`/rest/v1/play_members?email=like.*${DOMAIN}`, 'DELETE');
-  if (hostId) { await api(`/rest/v1/play_hosts?user_id=eq.${hostId}`, 'DELETE'); await api(`/auth/v1/admin/users/${hostId}`, 'DELETE'); }
+  // Deleting an account also removes its club roles.
+  if (hostId) await api(`/auth/v1/admin/users/${hostId}`, 'DELETE');
   for (const [n] of people) { const id = await findUser(demoEmail(n)); if (id) await api(`/auth/v1/admin/users/${id}`, 'DELETE'); }
   console.log('Demo data removed.');
 }
 
-async function seedAll() {
-  await clean();
-  const hostId = await ensureUser(`host${DOMAIN}`);
-  await api('/rest/v1/play_hosts', 'POST', { user_id: hostId, name: 'Demo host' });
-
-  const members = await api('/rest/v1/play_members', 'POST',
-    people.map(([name, gender, f]) => ({ name, gender, email: demoEmail(name), is_junior: false, guardian_ok: false, show_stats: true, ...f })));
-  const byName = Object.fromEntries(members.map((m) => [m.name, m.id]));
-  for (const n of ['Sam Carter', 'Kit Morgan', 'Jo Trelawny']) await ensureUser(demoEmail(n));
-
-  // Eight weekly nights, newest a week ago.
+/** Weekly nights for one club: attendance, scored games and a full session state. */
+async function seedNights(club, names, byName, gender, weeks, prefix) {
   const today = new Date();
-  const adults = people.map((p) => p[0]);
-  for (let w = 8; w >= 1; w--) {
+  for (let w = weeks; w >= 1; w--) {
     const d = new Date(today); d.setDate(d.getDate() - 7 * w);
     const date = d.toISOString().slice(0, 10);
     const sid = crypto.randomUUID();
-    const pool = [...adults];
+    const pool = [...names];
     const here = [];
-    const count = 8 + rnd(5);
+    const count = Math.min(names.length, 8 + rnd(5));
     while (here.length < count) here.push(pool.splice(rnd(pool.length), 1)[0]);
     const att = here.map((n, i) => ({ session_id: sid, member_id: byName[n], status: i === 0 && w % 3 === 0 ? 'walk_in' : 'attended' }));
     for (const n of pool.slice(0, 2)) att.push({ session_id: sid, member_id: byName[n], status: rnd(2) ? 'no_show' : 'cancelled' });
@@ -100,16 +102,38 @@ async function seedAll() {
     // A full session state, so opening a DEMO night in the host app shows the night as it was played.
     const pid = (n) => 'd' + n.split(' ')[0].toLowerCase();
     const state = {
-      id: sid, name: `DEMO Thursday night ${date}`, date, ended: true, pairs: [], ratings: {},
+      id: sid, name: `${prefix} ${date}`, date, ended: true, pairs: [], ratings: {},
       settings: { format: 'mixer', courts: 4, gameMinutes: 12, changeoverMinutes: 3, preferMixed: false, balanceLevels: false },
-      players: here.map((n) => ({ id: pid(n), name: n, gender: people.find((x) => x[0] === n)[1], level: 0, active: true, joinedRound: 1, memberId: byName[n] })),
+      players: here.map((n) => ({ id: pid(n), name: n, gender: gender(n), level: 0, active: true, joinedRound: 1, memberId: byName[n] })),
       rounds: rounds.map((r) => ({ number: r.number, sitting: r.sitting.map(pid), matches: r.matches.map((m) => ({ court: m.court, a: m.a.map(pid), b: m.b.map(pid), scoreA: m.scoreA, scoreB: m.scoreB })) })),
     };
-    await api('/rest/v1/play_sessions', 'POST', { id: sid, name: state.name, session_date: date, ended: true, state });
+    await api('/rest/v1/play_sessions', 'POST', { id: sid, club_id: club, name: state.name, session_date: date, ended: true, state });
     await api('/rest/v1/play_attendance', 'POST', att);
     await api('/rest/v1/play_games', 'POST', games);
   }
-  console.log(`Seeded ${people.length} demo players, 8 nights. Host login: host${DOMAIN}. Player logins: sam, kit (stats off), jo (junior, no parent OK).`);
+}
+
+async function seedAll() {
+  await clean();
+  const hostId = await ensureUser(`host${DOMAIN}`);
+  await api('/rest/v1/club_roles', 'POST', { club_id: FL, user_id: hostId, role: 'admin', name: 'Demo host' });
+
+  // F&L: demo people only, in the real club row.
+  const members = await api('/rest/v1/play_members', 'POST',
+    people.map(([name, gender, f]) => ({ club_id: FL, name, gender, email: demoEmail(name), is_junior: false, guardian_ok: false, show_stats: true, ...f })));
+  const byName = Object.fromEntries(members.map((m) => [m.name, m.id]));
+  for (const n of ['Sam Carter', 'Kit Morgan', 'Jo Trelawny']) await ensureUser(demoEmail(n));
+  await seedNights(FL, people.map((p) => p[0]), byName, (n) => people.find((x) => x[0] === n)[1], 8, 'DEMO Thursday night');
+
+  // A fake second club, so a player in two clubs can be tried.
+  await api('/rest/v1/clubs', 'POST', { id: RIVER, slug: 'demo-riverside', name: 'DEMO Riverside Pickleball', short_name: 'Riverside' });
+  const rm = await api('/rest/v1/play_members', 'POST',
+    riverPeople.map(([name, gender, e]) => ({ club_id: RIVER, name, gender, email: `${e}${DOMAIN}`, is_junior: false, guardian_ok: false, show_stats: true })));
+  const rBy = Object.fromEntries(rm.map((m) => [m.name, m.id]));
+  await seedNights(RIVER, riverPeople.map((p) => p[0]), rBy, (n) => riverPeople.find((x) => x[0] === n)[1], 3, 'DEMO Riverside Monday');
+
+  console.log(`Seeded ${people.length} F&L demo players with 8 nights, and DEMO Riverside with ${riverPeople.length} players and 3 nights.`);
+  console.log(`Host login: host${DOMAIN} (admin of F&L). Players: sam (in both clubs), kit (stats off), jo (junior, no parent OK).`);
 }
 
 async function open(who) {

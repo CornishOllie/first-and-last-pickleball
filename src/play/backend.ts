@@ -2,6 +2,10 @@
 // never loses a night), and copied to Supabase when someone is signed in.
 import type { Session, Gender, FactPlayer, FactGame } from './engine.ts';
 import { supabase } from './auth.ts';
+import { CLUB } from '../club.ts';
+
+/** Every cloud row belongs to this site's club. */
+const club = CLUB.id;
 
 export interface Member {
   id: string;
@@ -179,12 +183,16 @@ export function importAll(raw: string): { sessions: number; members: number; rat
 
 export const cloudEnabled = () => supabase !== null;
 
+/** ilike treats % and _ as wildcards; names like "Jo_Smith" must match literally. */
+const escapeLike = (v: string) => v.replace(/[\\%_]/g, (c) => `\\${c}`);
+
 export const cloud = {
   async list(): Promise<SessionSummary[]> {
     if (!supabase) return [];
     const { data, error } = await supabase
       .from('play_sessions')
       .select('id,name,session_date,ended,updated_at')
+      .eq('club_id', club)
       .order('session_date', { ascending: false })
       .order('updated_at', { ascending: false })
       .limit(60);
@@ -193,7 +201,7 @@ export const cloud = {
   },
   async load(id: string): Promise<Session | null> {
     if (!supabase) return null;
-    const { data, error } = await supabase.from('play_sessions').select('state').eq('id', id).maybeSingle();
+    const { data, error } = await supabase.from('play_sessions').select('state').eq('id', id).eq('club_id', club).maybeSingle();
     if (error) throw error;
     return (data?.state as Session) ?? null;
   },
@@ -201,6 +209,7 @@ export const cloud = {
     if (!supabase) return;
     const { error } = await supabase.from('play_sessions').upsert({
       id: s.id,
+      club_id: club,
       name: s.name,
       session_date: s.date,
       ended: s.ended,
@@ -211,22 +220,24 @@ export const cloud = {
   },
   async remove(id: string) {
     if (!supabase) return;
-    const { error } = await supabase.from('play_sessions').delete().eq('id', id);
+    const { error } = await supabase.from('play_sessions').delete().eq('id', id).eq('club_id', club);
     if (error) throw error;
   },
   async members(): Promise<Member[]> {
     if (!supabase) return [];
-    const { data, error } = await supabase.from('play_members').select('id,name,gender,active').eq('active', true).order('name');
+    const { data, error } = await supabase.from('play_members').select('id,name,gender,active').eq('club_id', club).eq('active', true).order('name');
     if (error) throw error;
     return (data ?? []) as Member[];
   },
   async ensureMember(name: string, gender: Gender): Promise<Member> {
     if (!supabase) throw new Error('Not signed in');
     const clean = name.trim();
-    const { data: found, error: e1 } = await supabase.from('play_members').select('id,name,gender,active').ilike('name', clean).maybeSingle();
+    // Names are not unique: if two people share this name, the longest-standing one is used.
+    const { data: found, error: e1 } = await supabase.from('play_members').select('id,name,gender,active')
+      .eq('club_id', club).ilike('name', escapeLike(clean)).order('created_at').limit(1).maybeSingle();
     if (e1) throw e1;
     if (found) return found as Member;
-    const { data, error } = await supabase.from('play_members').insert({ name: clean, gender }).select('id,name,gender,active').single();
+    const { data, error } = await supabase.from('play_members').insert({ club_id: club, name: clean, gender }).select('id,name,gender,active').single();
     if (error) throw error;
     return data as Member;
   },
@@ -242,6 +253,7 @@ export const cloud = {
     const { data, error } = await supabase
       .from('play_members')
       .select('id,name,gender,active,email,is_junior,guardian_ok,show_stats,user_id')
+      .eq('club_id', club)
       .order('name');
     if (error) throw error;
     return (data ?? []).map((r: any) => ({
@@ -251,7 +263,7 @@ export const cloud = {
   },
   async memberSummary(): Promise<MemberSummary[]> {
     if (!supabase) return [];
-    const { data, error } = await supabase.rpc('play_host_summary', {});
+    const { data, error } = await supabase.rpc('play_host_summary', { p_club: club });
     if (error) throw error;
     return (data ?? []) as MemberSummary[];
   },
@@ -260,7 +272,7 @@ export const cloud = {
     const clean: Record<string, unknown> = { ...patch };
     if ('email' in clean) clean.email = String(clean.email ?? '').trim() || null;
     if ('name' in clean) clean.name = String(clean.name ?? '').trim();
-    const { error } = await supabase.from('play_members').update(clean).eq('id', id);
+    const { error } = await supabase.from('play_members').update(clean).eq('id', id).eq('club_id', club);
     if (error) throw error;
   },
   async addMembers(rows: { name: string; email: string }[]): Promise<{ added: number; updated: number }> {
@@ -270,12 +282,22 @@ export const cloud = {
       const name = r.name.trim();
       if (!name) continue;
       const email = r.email.trim() || null;
-      const { data: found, error: e1 } = await supabase.from('play_members').select('id').ilike('name', name).maybeSingle();
-      if (e1) throw e1;
+      // Match by email first, then by name (the longest-standing person of that name).
+      let found: { id: string } | null = null;
+      if (email) {
+        const { data, error } = await supabase.from('play_members').select('id').eq('club_id', club).ilike('email', escapeLike(email)).limit(1).maybeSingle();
+        if (error) throw error;
+        found = data;
+      }
+      if (!found) {
+        const { data, error } = await supabase.from('play_members').select('id').eq('club_id', club).ilike('name', escapeLike(name)).order('created_at').limit(1).maybeSingle();
+        if (error) throw error;
+        found = data;
+      }
       if (found) {
         if (email) { const { error } = await supabase.from('play_members').update({ email }).eq('id', found.id); if (error) throw error; updated++; }
       } else {
-        const { error } = await supabase.from('play_members').insert({ name, email });
+        const { error } = await supabase.from('play_members').insert({ club_id: club, name, email });
         if (error) throw error;
         added++;
       }
@@ -284,7 +306,7 @@ export const cloud = {
   },
   async deleteMember(id: string) {
     if (!supabase) return;
-    const { error } = await supabase.from('play_members').delete().eq('id', id);
+    const { error } = await supabase.from('play_members').delete().eq('id', id).eq('club_id', club);
     if (error) throw error;
   },
   async mergeMembers(keep: string, drop: string) {
@@ -298,6 +320,7 @@ export const cloud = {
     const { data, error } = await supabase
       .from('play_ratings')
       .select('member_id,level,note,rated_at,session_id,play_sessions(name)')
+      .eq('club_id', club)
       .order('rated_at', { ascending: false })
       .limit(2000);
     if (error) throw error;
@@ -314,10 +337,10 @@ export const cloud = {
     if (!supabase || rows.length === 0) return;
     const ids = rows.map((r) => r.memberId);
     // replace any earlier rating from this same session, so re-saving does not duplicate
-    const { error: e1 } = await supabase.from('play_ratings').delete().eq('session_id', rows[0].sessionId).in('member_id', ids);
+    const { error: e1 } = await supabase.from('play_ratings').delete().eq('club_id', club).eq('session_id', rows[0].sessionId).in('member_id', ids);
     if (e1) throw e1;
     const { error } = await supabase.from('play_ratings').insert(
-      rows.map((r) => ({ member_id: r.memberId, session_id: r.sessionId, level: r.level, note: r.note })),
+      rows.map((r) => ({ club_id: club, member_id: r.memberId, session_id: r.sessionId, level: r.level, note: r.note })),
     );
     if (error) throw error;
   },
