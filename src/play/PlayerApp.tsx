@@ -4,6 +4,7 @@ import { daysAgo, leaderboard, linkMe, myStats, playerBackendOn, playerSignOut, 
 import type { BoardRow, MyRecord, MyStats } from './playerApi.ts';
 import CodeEntry from './CodeEntry.tsx';
 import { CLUB } from '../club.ts';
+import { DemoBanner, DemoCard, SwitchPerson, PLAYER_DEMO } from './demo.tsx';
 
 type Period = 'all' | '90';
 const pct = (won: number, games: number) => (games ? `${Math.round((100 * won) / games)}%` : '-');
@@ -14,6 +15,8 @@ function SignIn() {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'busy' | 'sent' | 'too-many' | 'error'>('idle');
   return (
+    <>
+    <DemoCard people={PLAYER_DEMO} />
     <div class="card">
       <h2>Sign in</h2>
       <p class="muted">Use the email the club has for you. We will email you a code. No password needed, and you stay signed in on this device.</p>
@@ -31,6 +34,7 @@ function SignIn() {
         </form>
       )}
     </div>
+    </>
   );
 }
 
@@ -81,17 +85,19 @@ export default function PlayerApp() {
   }, [me?.id, me?.club_id, period, me?.show_stats]);
 
   if (!on) return <div class="play"><h1>Your stats</h1><div class="note">Player stats are not switched on yet.</div></div>;
-  if (loading) return <div class="play"><p class="muted">Loading...</p></div>;
-  if (!email) return <div class="play"><h1>Your stats</h1><SignIn /></div>;
+  if (loading) return <div class="play"><DemoBanner /><p class="muted">Loading...</p></div>;
+  if (!email) return <div class="play"><DemoBanner /><h1>Your stats</h1><SignIn /></div>;
 
   if (!me) {
     return (
       <div class="play">
+        <DemoBanner />
         <h1>Your stats</h1>
         <div class="card">
           <h2>We could not find you</h2>
           <p>You are signed in as <strong>{email}</strong>, but that email is not on a player record. Ask a host at your next session to add it.</p>
           <button class="b small ghost" onClick={() => playerSignOut().then(() => location.reload())}>Sign out</button>
+          <SwitchPerson />
         </div>
         {err && <div class="error">{err}</div>}
       </div>
@@ -104,9 +110,13 @@ export default function PlayerApp() {
 
   return (
     <div class="play">
+      <DemoBanner />
       <div class="spread">
         <div><h1>Hi {firstName(me.name)}</h1><span class="muted">Your numbers from {me.club_name} play nights</span></div>
-        <button class="b small ghost" onClick={() => playerSignOut().then(() => location.reload())}>Sign out</button>
+        <div class="row">
+          <SwitchPerson />
+          <button class="b small ghost" onClick={() => playerSignOut().then(() => location.reload())}>Sign out</button>
+        </div>
       </div>
       {err && <div class="error">{err}</div>}
       {records.length > 1 && (

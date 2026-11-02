@@ -11,6 +11,7 @@ import { cloud, cloudEnabled, local, latestByMember, markDirty, clearDirty, dirt
 import type { Member, PastRating, SessionSummary } from './backend.ts';
 import { currentHost, sendLoginLink, signOut } from './auth.ts';
 import CodeEntry from './CodeEntry.tsx';
+import { DemoBanner, DemoCard, SwitchPerson, HOST_DEMO } from './demo.tsx';
 import { idleTimer, startGame, pause, resume, remaining, tick, skip, formatClock, pipSecond } from './timer.ts';
 import type { TimerState } from './timer.ts';
 import { beep, buzzer, goTone, keepAwake, pip, unlock } from './audio.ts';
@@ -34,6 +35,8 @@ function Login({ notHost }: { notHost: boolean }) {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   return (
+    <>
+    <DemoCard people={HOST_DEMO} />
     <div class="card">
       <h2>Host sign-in</h2>
       <p class="muted">This tool is for club hosts only. Enter your email and we will email you a sign-in code. No password needed, and you stay signed in on this device.</p>
@@ -67,6 +70,7 @@ function Login({ notHost }: { notHost: boolean }) {
         </form>
       )}
     </div>
+    </>
   );
 }
 
@@ -1072,11 +1076,12 @@ export default function App() {
   };
 
   if (!opened) return <div class="play"><h1>Play night</h1><DoorCode onOpen={() => setOpened(true)} /></div>;
-  if (host === 'loading') return <div class="play"><p class="muted">Loading...</p></div>;
-  if (cloudOn && !hostOk) return <div class="play"><h1>Play night</h1><Login notHost={host === 'not-host'} /></div>;
+  if (host === 'loading') return <div class="play"><DemoBanner /><p class="muted">Loading...</p></div>;
+  if (cloudOn && !hostOk) return <div class="play"><DemoBanner /><h1>Play night</h1><Login notHost={host === 'not-host'} /></div>;
 
   return (
     <div class="play">
+      <DemoBanner />
       <div class="spread">
         <div>
           <h1>{session ? session.name : 'Play night'}</h1>
@@ -1084,6 +1089,7 @@ export default function App() {
         </div>
         <div class="row">
           {session && <button class="b small ghost" onClick={() => { setSession(null); first.current = true; void refreshLists(); }}>All sessions</button>}
+          {cloudOn && <SwitchPerson />}
           {cloudOn && <button class="b small ghost" onClick={() => signOut().then(() => location.reload())}>Sign out</button>}
           {!cloudOn && <button class="b small ghost" onClick={() => { lock(); setOpened(false); }}>Lock</button>}
         </div>
