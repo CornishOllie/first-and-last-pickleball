@@ -36,6 +36,16 @@ export async function sendLoginLink(email: string): Promise<string | null> {
   return error ? error.message : null;
 }
 
+/** Sign in with the 6-digit code from the email. Needed on iPhone when the site is installed on the
+ *  Home Screen: a tapped link opens Safari, which has separate storage, so the installed app stays signed out. */
+export async function verifyCode(email: string, code: string): Promise<string | null> {
+  if (!supabase) return 'Sign-in is not set up yet.';
+  const token = code.replace(/\D/g, '');
+  if (token.length !== 6) return 'The code is 6 digits.';
+  const { error } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token, type: 'email' });
+  return error ? 'That code is not right, or it has expired. Ask for a new one.' : null;
+}
+
 export async function signOut() {
   if (supabase) await supabase.auth.signOut();
 }

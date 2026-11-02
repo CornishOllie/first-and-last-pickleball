@@ -4,6 +4,7 @@ import PlayerApp from '../play/PlayerApp.tsx';
 ---
 
 <Base title="Your stats" description="Your own play night numbers at First & Last Pickleball Club." noindex>
+  <link rel="manifest" href="/me.webmanifest" slot="head" />
   <section>
     <div class="container narrow">
       <PlayerApp client:only="preact" />

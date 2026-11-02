@@ -10,6 +10,7 @@ import type { Format, Gender, Match, Round, Session } from './engine.ts';
 import { cloud, cloudEnabled, local, latestByMember, markDirty, clearDirty, dirtyIds, exportAll, importAll, rememberOpen, lastOpen } from './backend.ts';
 import type { Member, PastRating, SessionSummary } from './backend.ts';
 import { currentHost, sendLoginLink, signOut } from './auth.ts';
+import CodeEntry from './CodeEntry.tsx';
 import { idleTimer, startGame, pause, resume, remaining, tick, skip, formatClock, pipSecond } from './timer.ts';
 import type { TimerState } from './timer.ts';
 import { beep, buzzer, goTone, keepAwake, pip, unlock } from './audio.ts';
@@ -35,7 +36,7 @@ function Login({ notHost }: { notHost: boolean }) {
   return (
     <div class="card">
       <h2>Host sign-in</h2>
-      <p class="muted">This tool is for club hosts only. Enter your email and we will send you a sign-in link. No password needed.</p>
+      <p class="muted">This tool is for club hosts only. Enter your email and we will email you a sign-in code. No password needed, and you stay signed in on this device.</p>
       {notHost && (
         <div class="error">
           You are signed in, but this account is not on the host list. Ask the committee to add you.
@@ -45,7 +46,7 @@ function Login({ notHost }: { notHost: boolean }) {
         </div>
       )}
       {sent ? (
-        <div class="note">Check your email for the sign-in link, then open it on this device.</div>
+        <CodeEntry email={email} onDone={() => location.reload()} onRestart={() => { setSent(false); setMsg(''); }} />
       ) : (
         <form
           onSubmit={async (e) => {
@@ -62,7 +63,7 @@ function Login({ notHost }: { notHost: boolean }) {
             <input id="em" type="email" required autoComplete="email" value={email} onInput={(e) => setEmail((e.target as HTMLInputElement).value)} />
           </div>
           {msg && <div class="error">{msg}</div>}
-          <button class="b" disabled={busy || !email}>{busy ? 'Sending...' : 'Send sign-in link'}</button>
+          <button class="b" disabled={busy || !email}>{busy ? 'Sending...' : 'Email me a code'}</button>
         </form>
       )}
     </div>
@@ -919,7 +920,8 @@ function SessionScreen({ session, update, tab, setTab, members, past, pastRows, 
 export default function App() {
   const cloudOn = cloudEnabled();
   const [host, setHost] = useState<Host>(cloudOn ? 'loading' : null);
-  const [opened, setOpened] = useState(isUnlocked());
+  // With cloud sign-in the account is the lock, so there is no door code. The code is only for the on-this-phone version.
+  const [opened, setOpened] = useState(cloudOn || isUnlocked());
   const [screen, setScreen] = useState<'sessions' | 'members'>('sessions');
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [session, setSession] = useState<Session | null>(null);
@@ -940,6 +942,7 @@ export default function App() {
 
   // Stay unlocked while the tool is in use. If it has been 12 hours since the last use, ask for the code again.
   useEffect(() => {
+    if (cloudOn) return;
     const alive = () => { if (isUnlocked()) touch(); else setOpened(false); };
     const events = ['pointerdown', 'keydown', 'visibilitychange'];
     events.forEach((e) => window.addEventListener(e, alive));
@@ -1082,7 +1085,7 @@ export default function App() {
         <div class="row">
           {session && <button class="b small ghost" onClick={() => { setSession(null); first.current = true; void refreshLists(); }}>All sessions</button>}
           {cloudOn && <button class="b small ghost" onClick={() => signOut().then(() => location.reload())}>Sign out</button>}
-          <button class="b small ghost" onClick={() => { lock(); setOpened(false); }}>Lock</button>
+          {!cloudOn && <button class="b small ghost" onClick={() => { lock(); setOpened(false); }}>Lock</button>}
         </div>
       </div>
       {loadErr && <div class="error">{loadErr}</div>}

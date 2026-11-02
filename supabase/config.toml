@@ -27,3 +27,9 @@ enable_signup = true
 enable_confirmations = true
 otp_length = 6
 otp_expiry = 3600
+
+# The sign-in email carries a 6-digit code as well as the link. The code is needed on iPhone when the site is
+# installed on the Home Screen, because a tapped link opens Safari instead. Push with real SMTP at switch-on.
+[auth.email.template.magic_link]
+subject = "Your sign-in code"
+content_path = "./supabase/templates/sign-in.html"

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import './play.css';
 import { daysAgo, leaderboard, linkMe, myStats, playerBackendOn, playerSignOut, requestLink, sessionInfo, setVisibility } from './playerApi.ts';
 import type { BoardRow, MyRecord, MyStats } from './playerApi.ts';
+import CodeEntry from './CodeEntry.tsx';
 
 type Period = 'all' | '90';
 const pct = (won: number, games: number) => (games ? `${Math.round((100 * won) / games)}%` : '-');
@@ -14,9 +15,9 @@ function SignIn() {
   return (
     <div class="card">
       <h2>Sign in</h2>
-      <p class="muted">Use the email the club has for you. We will send you a link. No password needed.</p>
+      <p class="muted">Use the email the club has for you. We will email you a code. No password needed, and you stay signed in on this device.</p>
       {state === 'sent' ? (
-        <div class="note">If that email is on the club's list, a sign-in link is on its way. Open it on this device. It can take a minute.</div>
+        <CodeEntry email={email.trim().toLowerCase()} known={false} onDone={() => location.reload()} onRestart={() => setState('idle')} />
       ) : (
         <form onSubmit={async (e) => { e.preventDefault(); setState('busy'); setState(await requestLink(email)); }}>
           <div class="field">
@@ -25,7 +26,7 @@ function SignIn() {
           </div>
           {state === 'too-many' && <div class="error">Too many tries. Wait a few minutes and try again.</div>}
           {state === 'error' && <div class="error">Something went wrong. Try again in a moment.</div>}
-          <button class="b" disabled={state === 'busy' || !email}>{state === 'busy' ? 'Sending...' : 'Send me a link'}</button>
+          <button class="b" disabled={state === 'busy' || !email}>{state === 'busy' ? 'Sending...' : 'Email me a code'}</button>
         </form>
       )}
     </div>
