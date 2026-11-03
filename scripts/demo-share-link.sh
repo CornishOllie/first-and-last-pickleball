@@ -15,15 +15,26 @@ case "$URL" in
 esac
 HOST="${URL#https://}"; HOST="${HOST%%/*}"
 OUT=$(mktemp); trap 'rm -f "$OUT"' EXIT
-npx vercel api "/aliases/$HOST/protection-bypass" -X PATCH -F ttl=$((DAYS*86400)) --raw > "$OUT"
+# Vercel allows one share link per preview and will not list it again. We keep the secret in a private
+# file outside the repo, so a re-run can revoke the old link and make a fresh one.
+STORE="$HOME/.config/pickleball-demo"; mkdir -p "$STORE"; chmod 700 "$STORE"
+SAVED="$STORE/$HOST.secret"
+if [ -s "$SAVED" ]; then
+  (umask 077; printf '{"revoke":{"secret":"%s","regenerate":false}}' "$(cat "$SAVED")" > "$OUT.body")
+  npx vercel api "/aliases/$HOST/protection-bypass" -X PATCH --input "$OUT.body" > /dev/null 2>&1 || true
+  rm -f "$OUT.body" "$SAVED"; echo "Old share link revoked."
+fi
+npx vercel api "/aliases/$HOST/protection-bypass" -X PATCH -F ttl=$((DAYS*86400)) > "$OUT" 2>/dev/null || { echo "Vercel refused. If it says a link already exists, put the old secret in $SAVED and re-run." >&2; exit 1; }
 LINK=$(python3 - "$OUT" "$HOST" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
 secrets = [k for k, v in d.get('protectionBypass', {}).items() if v.get('scope') == 'shareable-link']
 if not secrets: sys.exit(1)
-print(f"https://{sys.argv[2]}/?_vercel_share={secrets[-1]}")
+print(secrets[-1])
 PY
 )
+(umask 077; printf '%s' "$LINK" > "$SAVED")
+LINK="https://$HOST/?_vercel_share=$LINK"
 if [ "$3" = "--file" ] && [ -n "$4" ]; then
   (umask 077; printf '%s' "$LINK" > "$4"); echo "Share link written to $4"
 else
